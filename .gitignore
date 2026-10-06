@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+# Datos fuente y derivados (NO versionar: contienen información institucional
+# anonimizada pero sensible; además son archivos grandes).
+# ---------------------------------------------------------------------------
+data/
+!data/.gitkeep
+
+# Datasets analíticos generados por el pipeline
+data_processed/
+*.parquet
+*.feather
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.python-version
+
+# ---------------------------------------------------------------------------
+# Jupyter
+# ---------------------------------------------------------------------------
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# ---------------------------------------------------------------------------
+# Scripts exploratorios temporales
+# ---------------------------------------------------------------------------
+_explore*.py
+_tmp*.py
+
+# ---------------------------------------------------------------------------
+# LaTeX (artefactos de compilación)
+# ---------------------------------------------------------------------------
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# ---------------------------------------------------------------------------
+# Sistema operativo / editor
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
