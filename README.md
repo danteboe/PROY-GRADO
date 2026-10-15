@@ -31,9 +31,36 @@ PROY-GRADO/
 │   ├── figures/           # Figuras generadas (PNG) usadas en los notebooks y el informe
 │   └── tables/            # Tablas intermedias (CSV)
 ├── docs/                  # Documentos de etapa (requerimientos, diccionario, calidad)
+├── dashboard/             # Dashboard web interactivo (React + Vite + Recharts)
+│   ├── public/data.json   # Cubo agregado generado por src/export_dashboard.py
+│   └── src/               # Código de la aplicación (componentes, lógica de filtros)
 ├── latex/                 # Informe técnico principal (LaTeX)
 └── requirements.txt
 ```
+
+## Dashboard interactivo
+
+El producto principal es un dashboard descriptivo y exploratorio que permite
+filtrar la participación en internacionalización por once dimensiones y
+visualizarla con gráficos interactivos (hover, tooltips, cross-filtering).
+
+```bash
+# 1. Generar el cubo de datos agregado (desde el dataset analítico)
+python -m src.export_dashboard
+
+# 2. Instalar dependencias y ejecutar en modo desarrollo
+cd dashboard
+npm install
+npm run dev          # servidor local de desarrollo
+
+# 3. Construir la versión estática desplegable
+npm run build        # genera dashboard/dist/
+```
+
+El dashboard es **sin servidor**: todo el filtrado y la agregación ocurren en el
+navegador sobre un cubo pre-agregado (no se exponen registros individuales, por
+privacidad). El diseño y las decisiones se documentan en el informe LaTeX
+(sección "Diseño e implementación del dashboard").
 
 ## Reproducibilidad
 

@@ -62,9 +62,12 @@ pregrado ($140\,422$ estudiantes, tasa de participación del $4{,}15\%$) revela 
 tendencia temporal con una caída atribuible a la pandemia y recuperación
 posterior, fuerte heterogeneidad por facultad y programa, un gradiente
 socioeconómico y asociaciones consistentes entre participación y desempeño
-académico. El informe cierra formulando la pregunta de modelamiento que se
-abordará en las fases siguientes, junto con sus salvaguardas metodológicas
-(manejo de desbalance e prevención de fuga de información).
+académico. Sobre esta base, y en acuerdo con la dirección del proyecto, el alcance
+se reorientó hacia un producto \textbf{descriptivo y exploratorio}: se diseñó e
+implementó un \textbf{dashboard web interactivo} (React, arquitectura sin servidor
+sobre un cubo de datos pre-agregado) que permite filtrar la participación por once
+dimensiones y visualizarla con gráficos interactivos. Queda fuera del alcance la
+construcción de modelos predictivos.
 \end{abstract}
 
 \tableofcontents
@@ -116,14 +119,16 @@ priorizaron siete preguntas analíticas (PA):
     \item[PA4] Momento de la trayectoria académica en que ocurre la movilidad.
     \item[PA5] Características académicas asociadas a la participación.
     \item[PA6] Diferencias entre grupos (género, estrato, tipo de admisión).
-    \item[PA7] Estimación de la probabilidad de participación (modelamiento).
+    \item[PA7] Perfilamiento descriptivo: ¿qué características distinguen a los
+    estudiantes que participan de los que no? (sin modelos predictivos).
 \end{description}
 
 \subsection{Alcance y criterios de éxito de la fase}
 El alcance de la fase de datos comprende: un dataset analítico documentado y
 reproducible, la definición justificada de la señal de internacionalización, un
-informe de calidad de datos, un EDA que responda PA1--PA6 y la formulación de la
-pregunta de modelamiento (PA7). El detalle de requerimientos funcionales y no
+informe de calidad de datos y un EDA que responda PA1--PA6. Este EDA es, además, el
+insumo directo del dashboard descriptivo descrito en la
+Sección~\ref{sec:dashboard}. El detalle de requerimientos funcionales y no
 funcionales se encuentra en \texttt{docs/01\_requerimientos\_semana4.md}.
 
 % ======================================================================
@@ -223,10 +228,8 @@ pertenece a una lista canónica de cursos de movilidad (p.\,ej. \texttt{DECA-220
 porque una misma experiencia aparece bajo múltiples códigos de departamento;
 confiar solo en códigos subestimaría la señal. (ii)~Se excluye la modalidad
 ``intercambio nacional'' del foco internacional mediante un parámetro explícito.
-(iii)~La señal se construye sin mirar ninguna variable posterior al evento, de
-modo que pueda reutilizarse como variable objetivo en el modelamiento sin
-introducir fuga de información. La definición está implementada y es auditable en
-\texttt{src/internationalization.py}.
+(iii)~La señal se construye de forma auditable y trazable. La definición está
+implementada en \texttt{src/internationalization.py}.
 
 La Tabla~\ref{tab:modalidades} y la Figura~\ref{fig:modalidades} resumen la
 composición de la señal.
@@ -270,17 +273,15 @@ créditos (CAPP) y la etiqueta \texttt{PARTICIPA}. El resultado es un dataset de
 \textbf{$233\,987$ estudiantes $\times$ $44$ variables}, validado automáticamente
 (clave única, conservación del universo, etiqueta binaria).
 
-\textbf{Prevención de fuga de información.} El pipeline conserva, por estudiante,
-el primer periodo de movilidad (\texttt{PRIMER\_PERIODO\_MOVILIDAD}). En la fase de
-modelamiento, los predictores de desempeño deberán calcularse en un corte
-temporal anterior a ese periodo, en coherencia con la advertencia de la propuesta
-sobre \emph{data leakage}.
+\textbf{Fecha del primer evento.} El pipeline conserva, por estudiante, el primer
+periodo de movilidad (\texttt{PRIMER\_PERIODO\_MOVILIDAD}), que habilita el
+análisis temporal del dashboard (año en que ocurre la primera experiencia).
 
-\subsection{Desbalance de clases}
+\subsection{Tasa de participación por nivel}
 La participación es un fenómeno minoritario: \textbf{$3{,}43\%$ global} y
 \textbf{$4{,}15\%$ en pregrado}. El pregrado concentra el mayor volumen de
 participantes ($5\,821$) y la tasa más alta entre los niveles con volumen
-relevante, lo que motiva centrar el análisis y el modelamiento en este nivel.
+relevante, lo que motiva centrar el análisis en este nivel.
 
 \subsection{Tratamiento de valores faltantes}
 \label{sec:faltantes}
@@ -292,11 +293,10 @@ faltante. Decisiones:
 \begin{itemize}[leftmargin=*]
     \item \texttt{NIVEL\_INGLES} se \textbf{descarta} como variable principal por
     cobertura insuficiente; se conserva el puntaje de inglés del ICFES.
-    \item Para las variables de desempeño e ICFES se adoptará, en el
-    modelamiento, \textbf{imputación por mediana más un indicador de faltante},
-    evitando descartar estudiantes y haciendo explícito el mecanismo del faltante,
-    en línea con la literatura \cite{little2019}. No se imputa en el EDA: aquí se
-    analizan los datos observados.
+    \item No se imputa: el EDA y el dashboard trabajan sobre los datos observados.
+    Los faltantes se preservan como una categoría explícita ``Sin dato'' en los
+    filtros y agregaciones, haciendo visible su magnitud en lugar de ocultarla,
+    en línea con la literatura sobre datos faltantes \cite{little2019}.
 \end{itemize}
 
 % ======================================================================
@@ -384,10 +384,9 @@ estructural clave y una dimensión de segmentación prioritaria para el dashboar
 \subsection{PA4 --- Momento de la trayectoria}
 Los participantes se concentran en etapas intermedias y avanzadas de la carrera
 (Figura~\ref{fig:momento}): su avance mediano es de $\sim 8{,}75$ semestres frente
-a $\sim 8$ en no participantes, con una distribución mucho más estrecha. Esto
-tiene una implicación directa sobre el modelamiento: los predictores de desempeño
-deben ``congelarse'' en un corte anterior al primer evento, no al final de la
-trayectoria.
+a $\sim 8$ en no participantes, con una distribución mucho más estrecha. Esto es
+consistente con que la movilidad suele requerir haber cursado un mínimo de
+créditos, y motiva el filtro por semestre de avance en el dashboard.
 
 \begin{figure}[H]
 \centering
@@ -397,6 +396,7 @@ trayectoria.
 \end{figure}
 
 \subsection{PA5--PA6 --- Perfil académico y diferencias entre grupos}
+\label{sec:eda-perfil}
 Los participantes muestran, en promedio, mejor desempeño y mejor perfil de ingreso
 (Figura~\ref{fig:bivdesempeno}, Tabla~\ref{tab:perfil}). Existe además un
 \textbf{gradiente socioeconómico} claro (Tabla~\ref{tab:grupos}): la tasa de
@@ -458,10 +458,11 @@ la participación. Individualmente, las correlaciones con \texttt{PARTICIPA} son
 magnitud baja a moderada (lo esperable para un evento poco frecuente), pero con
 signos coherentes: el percentil de PGA por programa y el PGA muestran la
 asociación positiva más clara, seguidos del avance y el perfil de ingreso. Ninguna
-variable domina por sí sola, lo que anticipa que un modelo multivariado --- y
-posiblemente no lineal --- capturará mejor el fenómeno que cualquier regla
-univariada. La correlación entre predictores (p.\,ej. PGA y percentil) alerta
-sobre colinealidad a considerar en modelos lineales.
+variable domina por sí sola: la participación es un fenómeno multidimensional, lo
+que justifica un tablero que permita cruzar varias dimensiones a la vez en lugar de
+quedarse en indicadores aislados. Las correlaciones entre variables de desempeño
+(p.\,ej. PGA y percentil) indican que varias de ellas aportan información
+redundante, algo a tener en cuenta al leer los filtros del dashboard.
 
 \begin{figure}[H]
 \centering
@@ -501,37 +502,112 @@ Avance mediano de participantes        & 8{,}75 semestres \\
 \end{table}
 
 % ======================================================================
-\section{Formulación del problema de modelamiento (PA7)}
+\section{Reorientación del alcance: foco descriptivo}
+\label{sec:reorientacion}
 % ======================================================================
-A partir del análisis se formaliza el problema que se abordará desde la semana 10:
+Tras el análisis exploratorio y en acuerdo con la dirección del proyecto, se
+decidió \textbf{reorientar el alcance hacia un producto descriptivo y
+exploratorio}, dejando fuera del alcance la construcción de modelos predictivos.
+El objetivo pasa a ser una herramienta que permita a la Oficina de
+Internacionalización \emph{explorar y visualizar} la participación con el mayor
+grado de interactividad y granularidad de filtrado posible.
 
-\begin{quote}
-\textit{Dado un estudiante de pregrado, estimar la probabilidad de que participe
-en una experiencia de internacionalización en algún momento de su carrera, usando
-únicamente información disponible antes del evento.}
-\end{quote}
+\textbf{Justificación de la decisión.} (i)~El valor principal para la Oficina está
+en responder de forma autónoma las preguntas PA1--PA6 (quiénes, cuándo, dónde y en
+qué modalidad participan los estudiantes), que son descriptivas. (ii)~Un modelo
+predictivo introduce riesgos de interpretación (confundir asociación con causa) y
+de uso indebido sobre estudiantes individuales, en tensión con el principio de no
+presentar decisiones automáticas y con la minimización de datos. (iii)~La tasa de
+participación baja ($\sim 4\%$) hace que un clasificador aporte poco valor
+accionable frente a un buen tablero descriptivo. En consecuencia, la pregunta PA7
+se reformula como una pregunta \emph{descriptiva} de perfilamiento ---\,¿qué
+características distinguen a los participantes?\,--- ya respondida en la
+Sección~\ref{sec:eda-perfil} mediante comparación de grupos, sin necesidad de un
+modelo. El trabajo de datos de las semanas 4--9 (señal, dataset, EDA) sigue siendo
+el insumo directo del tablero.
 
-\textbf{Justificación.} Existe una variable objetivo bien definida y auditable
-(\texttt{PARTICIPA}) con una tasa de base realista; el EDA mostró asociaciones
-consistentes que dan sustento a un modelo con capacidad discriminante; y el
-problema es relevante para la Oficina, pues permite identificar perfiles con baja
-participación y focalizar estrategias.
+% ======================================================================
+\section{Diseño e implementación del dashboard}
+\label{sec:dashboard}
+% ======================================================================
+El producto central es un \textbf{dashboard web interactivo} que materializa el
+principio de exploración de Shneiderman ---\,visión general primero, luego zoom y
+filtro, y detalle bajo demanda\,--- \cite{shneiderman1996}, con un diseño orientado
+a las tareas del usuario y no a la estructura interna de los datos
+\cite{munzner2014}.
 
-\textbf{Salvaguardas metodológicas heredadas al modelamiento.}
+\subsection{Arquitectura}
+Se adoptó una arquitectura \textbf{sin servidor} (\emph{client-side}) compuesta por
+dos piezas:
+
 \begin{enumerate}[leftmargin=*]
-    \item \emph{Desbalance de clases}: la exactitud no basta (un clasificador
-    trivial acertaría $\sim 96\%$); se usarán precisión, \emph{recall}, F1 y
-    PR-AUC, además de ROC-AUC, y se evaluarán técnicas de manejo de desbalance
-    \cite{saito2015}.
-    \item \emph{Prevención de fuga de información}: los predictores se calcularán
-    en un corte temporal anterior al primer evento de movilidad.
-    \item \emph{Complejidad progresiva}: línea base trivial, regresión logística
-    \cite{hastie2009}, árboles/Random Forest \cite{breiman2001}, boosting
-    \cite{chen2016}, con interpretabilidad mediante SHAP \cite{lundberg2017} y
-    validación cruzada \cite{kohavi1995}. Las implementaciones se apoyarán en
-    \emph{scikit-learn} \cite{pedregosa2011}.
-    \item \emph{Variables descartadas} por cobertura: \texttt{NIVEL\_INGLES}.
+    \item \textbf{Capa de datos (Python).} El módulo
+    \texttt{src/export\_dashboard.py} transforma el dataset analítico en un
+    \textbf{cubo pre-agregado} y lo exporta como un único archivo JSON
+    (\texttt{dashboard/public/data.json}). Cada fila del cubo es una combinación
+    única de las dimensiones categóricas y lleva el número de estudiantes y de
+    participantes. El cubo resultante tiene $54\,762$ celdas y pesa $1{,}9$~MB
+    (muy comprimible).
+    \item \textbf{Capa de presentación (React + Vite).} Una aplicación de página
+    única construida con React y la biblioteca de gráficos \emph{Recharts},
+    elegida por su bajo peso e interactividad nativa (\emph{hover}, \emph{tooltips}).
+    El \emph{bundle} de producción pesa $\sim 158$~KB comprimido, acorde con el
+    requisito de una herramienta ligera. El navegador recalcula todos los
+    indicadores sumando las celdas del cubo que satisfacen los filtros activos.
 \end{enumerate}
+
+\textbf{Decisión clave (cubo agregado vs. microdatos).} En lugar de enviar los
+$233\,987$ registros individuales al navegador, se envía el cubo agregado. Esto
+(i)~mantiene la aplicación ligera, (ii)~permite filtrar por \emph{cualquier}
+combinación de dimensiones del lado del cliente, sin latencia de red, y
+(iii)~respeta el principio de minimización: \textbf{no se exponen registros
+individuales}, solo conteos agregados, en coherencia con la Ley 1581 de 2012
+\cite{ley1581,decreto1377}.
+
+\subsection{Dimensiones de filtrado}
+El tablero expone \textbf{once filtros de selección múltiple} con conteo
+contextual (cada opción muestra cuántos estudiantes resultarían bajo el resto de
+filtros activos) y \emph{cross-filtering} en vivo: nivel académico, facultad,
+programa, género, estrato social, tipo de admisión, estado académico, modalidad de
+movilidad, y rangos de PGA, de semestre de avance y de puntaje ICFES. Las
+variables numéricas se discretizan en rangos legibles para el usuario. Cualquier
+combinación de filtros recalcula instantáneamente los indicadores y gráficos.
+
+\subsection{Componentes de visualización}
+El tablero se organiza alrededor de las preguntas analíticas
+(Tabla~\ref{tab:modulos}). Todas las visualizaciones responden al paso del mouse
+con \emph{tooltips} que detallan estudiantes, participantes y tasa; en los gráficos
+de ranking se puede alternar entre número absoluto y tasa, y hacer clic en una
+barra de facultad o programa para filtrar por ella.
+
+\begin{table}[H]
+\centering
+\caption{Módulos del dashboard y preguntas analíticas que responden.}
+\label{tab:modulos}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{7.6cm} c}
+\toprule
+\textbf{Componente} & \textbf{Qué muestra} & \textbf{PA} \\
+\midrule
+Indicadores (KPI) & Estudiantes de la selección, participantes, tasa y eventos. & — \\
+Serie temporal & Movilidad por año (con franja de pandemia). & PA1 \\
+Ranking por facultad & Participación por facultad (n.º / tasa). & PA2 \\
+Ranking por programa & Top programas de la selección. & PA2 \\
+Modalidades & Composición por tipo de experiencia. & PA3 \\
+Modalidades en el tiempo & Área apilada por modalidad desde 2010. & PA3 \\
+Participación por avance & Tasa según semestre de avance. & PA4 \\
+Perfil (PGA, estrato) & Tasa por rango de PGA y por estrato. & PA5--PA6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Reproducibilidad del dashboard}
+El tablero se regenera de forma reproducible: \texttt{python -m src.export\_dashboard}
+reconstruye el cubo a partir del dataset analítico, y \texttt{npm run build} dentro
+de \texttt{dashboard/} produce la versión estática desplegable. Como validación, se
+verificó que los indicadores calculados en el navegador coinciden con los del
+pipeline (p.\,ej. $233\,987$ estudiantes y tasa global $3{,}43\%$; al filtrar
+pregrado, $140\,422$ estudiantes y $4{,}15\%$; pregrado con estrato~6, $9{,}48\%$).
 
 % ======================================================================
 \section{Trazabilidad de decisiones metodológicas}
@@ -573,15 +649,14 @@ Mayor volumen de participantes y tasa más alta; mejor cobertura de la señal. &
 nb 03--05 \\
 Descarte de \texttt{NIVEL\_INGLES} &
 Cobertura $<13\%$ en pregrado. & nb 03, \S\ref{sec:faltantes} \\
-Imputación por mediana + indicador de faltante (en modelamiento) &
-Evita descartar estudiantes y hace explícito el faltante \cite{little2019}. &
-\S\ref{sec:faltantes} \\
-Conservar \texttt{PRIMER\_PERIODO\_MOVILIDAD} &
-Habilita la construcción de predictores anti-\emph{leakage}. &
-\texttt{build\_dataset}, nb 03 \\
-Métricas sensibles al desbalance &
-Tasa de participación $\sim 4\%$; la exactitud es engañosa \cite{saito2015}. &
-\S\,PA7 \\
+Reorientación a producto descriptivo &
+Mayor valor accionable y menor riesgo de interpretación/uso indebido que un modelo
+predictivo. & \S\ref{sec:reorientacion} \\
+Dashboard sin servidor sobre cubo agregado &
+Mantiene la app ligera, permite filtrar por cualquier combinación en el cliente y
+no expone microdatos (minimización). & \texttt{export\_dashboard.py}, \S\ref{sec:dashboard} \\
+Discretización de variables numéricas en rangos &
+Filtros legibles y celdas de cubo acotadas. & \texttt{export\_dashboard.py} \\
 Estrato/género solo para equidad &
 Principio de minimización de datos (Ley 1581 de 2012). & nb 04--05 \\
 \bottomrule
@@ -608,8 +683,8 @@ partir de grupos muy pequeños.
     asignaturas podrían no quedar capturadas; su validación con la Oficina es un
     paso pendiente.
     \item Varias variables tienen faltantes altos en pregrado, lo que limita el
-    análisis de ciertos cruces y condiciona la estrategia de imputación del
-    modelamiento.
+    análisis de ciertos cruces; en el dashboard, estos casos se agrupan en una
+    categoría ``Sin dato'' explícita.
     \item El snapshot \texttt{informacion\_actual} mezcla cohortes de épocas muy
     distintas; las tasas globales deben leerse teniendo en cuenta esta
     heterogeneidad.
@@ -619,18 +694,22 @@ partir de grupos muy pequeños.
 % ======================================================================
 \section{Trabajo pendiente (semanas 10--17)}
 % ======================================================================
+Con la reorientación a un producto descriptivo
+(Sección~\ref{sec:reorientacion}), el trabajo restante se concentra en el tablero:
+
 \begin{itemize}[leftmargin=*]
-    \item \textbf{Semanas 10--12 (modelamiento):} construcción de predictores
-    anti-\emph{leakage}, línea base y regresión logística, modelos de árboles y
-    ensamble, validación cruzada e interpretabilidad (SHAP).
-    \item \textbf{Semana 13 (diseño del sistema):} arquitectura, módulos y
-    prototipos de la interfaz, siguiendo principios de visualización orientada a
-    tareas y de exploración interactiva (visión general, zoom/filtro y detalle
-    bajo demanda) \cite{shneiderman1996,munzner2014}.
-    \item \textbf{Semana 14 (dashboard):} implementación de la interfaz, filtros,
-    indicadores e integración del modelo.
-    \item \textbf{Semanas 15--16 (validación y cierre):} pruebas, evaluación con
-    usuarios, documentación técnica y preparación del poster.
+    \item \textbf{Enriquecimiento del tablero:} nuevas vistas (p.\,ej. mapa de
+    calor facultad~$\times$~año), más dimensiones de filtrado y exportación de las
+    vistas filtradas a CSV.
+    \item \textbf{Validación con usuarios:} evaluación de usabilidad con
+    representantes de la Oficina de Internacionalización, siguiendo principios de
+    visualización orientada a tareas \cite{shneiderman1996,munzner2014}, y ajustes
+    a partir de la retroalimentación.
+    \item \textbf{Despliegue y documentación:} publicación del sitio estático,
+    manual de uso y procedimiento de actualización de datos.
+    \item \textbf{Validación de la señal:} contrastar la señal de movilidad
+    derivada con los registros administrativos de la Oficina.
+    \item \textbf{Preparación del poster} (semana 17).
 \end{itemize}
 
 % ======================================================================
@@ -642,8 +721,9 @@ datos y un análisis exploratorio que responde las preguntas PA1--PA6. Los
 hallazgos son coherentes y defendibles: una tendencia temporal sensible a la
 pandemia, fuerte heterogeneidad por facultad y programa, un gradiente
 socioeconómico y asociaciones consistentes con el desempeño académico. Sobre esta
-base se formuló la pregunta de modelamiento (PA7) con sus salvaguardas, dejando el
-proyecto en condiciones de iniciar la fase predictiva. Todo el trabajo es
+base, el proyecto se reorientó hacia un producto descriptivo y se construyó un
+\textbf{dashboard web interactivo} que permite a la Oficina explorar la
+participación por múltiples dimensiones de forma autónoma. Todo el trabajo es
 reproducible y su trazabilidad queda consolidada en este informe.
 
 % ======================================================================
@@ -658,27 +738,6 @@ Discovery and Data Mining}, 2000.
 P. Chapman et al., \textit{CRISP-DM 1.0: Step-by-step Data Mining Guide}. SPSS,
 2000.
 
-\bibitem{hastie2009}
-T. Hastie, R. Tibshirani, and J. Friedman, \textit{The Elements of Statistical
-Learning}, 2nd ed. Springer, 2009.
-
-\bibitem{breiman2001}
-L. Breiman, ``Random forests,'' \textit{Machine Learning}, vol. 45, no. 1,
-pp. 5--32, 2001.
-
-\bibitem{chen2016}
-T. Chen and C. Guestrin, ``XGBoost: A scalable tree boosting system,'' in
-\textit{Proc. 22nd ACM SIGKDD}, 2016, pp. 785--794.
-
-\bibitem{lundberg2017}
-S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model
-predictions,'' in \textit{Advances in Neural Information Processing Systems 30},
-2017, pp. 4765--4774.
-
-\bibitem{pedregosa2011}
-F. Pedregosa et al., ``Scikit-learn: Machine learning in Python,'' \textit{Journal
-of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
-
 \bibitem{little2019}
 R. J. A. Little and D. B. Rubin, \textit{Statistical Analysis with Missing Data},
 3rd ed. Wiley, 2019.
@@ -690,15 +749,6 @@ pp. 336--343.
 
 \bibitem{munzner2014}
 T. Munzner, \textit{Visualization Analysis and Design}. CRC Press, 2014.
-
-\bibitem{kohavi1995}
-R. Kohavi, ``A study of cross-validation and bootstrap for accuracy estimation and
-model selection,'' in \textit{Proc. 14th IJCAI}, 1995, pp. 1137--1145.
-
-\bibitem{saito2015}
-T. Saito and M. Rehmsmeier, ``The precision-recall plot is more informative than
-the ROC plot when evaluating binary classifiers on imbalanced datasets,''
-\textit{PLoS ONE}, vol. 10, no. 3, e0118432, 2015.
 
 \bibitem{ley1581}
 Congreso de Colombia, ``Ley Estatutaria 1581 de 2012,'' Diario Oficial No. 48.587,
