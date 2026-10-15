@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import { fmtInt, orderedCategories } from '../data.js'
 
 // Grupo de filtro multi-selección (checkboxes) para una dimensión.
-// Muestra, junto a cada categoría, el conteo de estudiantes que resultaría
-// bajo el resto de filtros activos (conteo contextual).
+// Junto a cada categoría muestra el número de estudiantes **con experiencia de
+// internacionalización** (participantes) que resultaría bajo el resto de filtros
+// activos (conteo contextual). El total de estudiantes se muestra como título
+// (tooltip) de cada opción.
 export default function FilterGroup({
   dim, label, codebooks, counts, selected, onToggle, onClear, searchable = false,
 }) {
@@ -13,7 +15,11 @@ export default function FilterGroup({
   const items = useMemo(() => {
     const ordered = orderedCategories(dim, cats)
     return ordered
-      .map((name) => ({ idx: cats.indexOf(name), name, n: counts.get(cats.indexOf(name)) || 0 }))
+      .map((name) => {
+        const idx = cats.indexOf(name)
+        const c = counts.get(idx) || { n: 0, part: 0 }
+        return { idx, name, n: c.n, part: c.part }
+      })
       .filter((it) => it.n > 0 || selected.has(it.idx))
       .filter((it) => !q || it.name.toLowerCase().includes(q.toLowerCase()))
   }, [dim, cats, counts, selected, q])
@@ -38,7 +44,11 @@ export default function FilterGroup({
       )}
       <div className="options">
         {items.map((it) => (
-          <label className="opt" key={it.idx} title={it.name}>
+          <label
+            className="opt"
+            key={it.idx}
+            title={`${it.name}\n${fmtInt(it.part)} con internacionalización de ${fmtInt(it.n)} estudiantes`}
+          >
             <input
               type="checkbox"
               checked={selected.has(it.idx)}
@@ -47,7 +57,9 @@ export default function FilterGroup({
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {it.name}
             </span>
-            <span className="opt-n">{fmtInt(it.n)}</span>
+            <span className="opt-n" title="Estudiantes con internacionalización">
+              {fmtInt(it.part)}
+            </span>
           </label>
         ))}
         {items.length === 0 && <div style={{ color: '#94a3b8', fontSize: 12 }}>Sin coincidencias</div>}

@@ -6,12 +6,23 @@ El dashboard es una aplicación React **sin backend**. Para que sea ligero y, a 
 vez, permita filtrar por cualquier combinación de dimensiones del lado del
 cliente, no se exportan los microdatos (234k estudiantes) ni los archivos fuente
 (que además son sensibles). En su lugar se exporta un **cubo pre-agregado**: una
-tabla donde cada fila es una combinación única de dimensiones categóricas y lleva
-el conteo de estudiantes (`n`). El navegador reconstruye cualquier indicador
-sumando las celdas que satisfacen los filtros activos.
+tabla donde cada fila es una combinación única de dimensiones y lleva el conteo de
+estudiantes (`n`) y de participantes (`part`). El navegador reconstruye cualquier
+indicador sumando las celdas que satisfacen los filtros activos.
+
+El cubo incluye dos tipos de dimensiones:
+
+* **Categóricas** (nivel, facultad, programa, género, estrato, tipo de admisión,
+  estado académico, año de movilidad, modalidad): filtros de selección múltiple.
+* **Numéricas discretizadas** (PGA, semestre de avance, puntaje ICFES, edad):
+  guardadas como enteros en una rejilla fina (p. ej. PGA en pasos de 0.25) para
+  habilitar **sliders de rango** en la interfaz. El valor centinela ``-1``
+  representa "sin dato". La rejilla fina permite que el cross-filtering entre
+  sliders y filtros categóricos sea exacto manteniendo el archivo pequeño
+  (~3.5 MB sin comprimir, ~0.34 MB con gzip).
 
 Esto respeta el principio de minimización de datos (no se publican registros
-individuales) y mantiene el artefacto pequeño (~pocos MB, muy comprimible).
+individuales).
 
 Uso
 ---
@@ -30,12 +41,24 @@ from . import config, utils
 
 KEY = config.STUDENT_KEY
 
-# Dimensiones categóricas del cubo (cada combinación distinta es una celda).
-CUBE_DIMS = [
+# Dimensiones categóricas del cubo (filtros de selección múltiple).
+CAT_DIMS = [
     "nivel", "facultad", "programa", "genero", "estrato",
     "tipo_admision", "estado", "anio_mov", "modalidad",
-    "pga_bin", "avance_bin", "icfes_bin",
 ]
+
+# Dimensiones numéricas discretizadas (sliders de rango). Para cada una se define
+# el paso de la rejilla, un factor de escala entero (para no perder decimales) y
+# el rango mostrado al usuario. El sentinel NA_SENTINEL marca "sin dato".
+NA_SENTINEL = -1
+
+NUM_DIMS = {
+    # nombre: (serie_scaler, paso_en_unidades_reales, min_real, max_real, decimales)
+    "pga":    dict(scale=100, step=0.25, lo=0.0,  hi=5.0,   dec=2, unit=""),
+    "avance": dict(scale=1,   step=2,    lo=0,    hi=16,    dec=0, unit="sem"),
+    "icfes":  dict(scale=1,   step=50,   lo=100,  hi=500,   dec=0, unit="pts"),
+    "edad":   dict(scale=1,   step=5,    lo=15,   hi=45,    dec=0, unit="años"),
+}
 
 
 def _faculty_name_map() -> dict:
@@ -47,13 +70,18 @@ def _faculty_name_map() -> dict:
     )
     pg = pg.dropna().drop_duplicates("CODIGO_FACULTAD_PROGRAMA_1")
     m = pg.set_index("CODIGO_FACULTAD_PROGRAMA_1")["DESCRIPCION_FACULTAD_PROGRAMA_1"].to_dict()
-    # Normalizar a Título (evita todo-mayúsculas en la interfaz).
     return {k: str(v).title() for k, v in m.items()}
 
 
-def _bin_series(s: pd.Series, bins, labels) -> pd.Series:
-    out = pd.cut(s, bins=bins, right=False, labels=labels)
-    return out.astype("object").where(out.notna(), "Sin dato")
+def _discretize_pga(s: pd.Series) -> pd.Series:
+    # Paso 0.25, almacenado como entero x100 (p. ej. 4.25 -> 425).
+    return ((s * 4).round() * 25).fillna(NA_SENTINEL).astype(int)
+
+
+def _discretize_step(s: pd.Series, step: int, lo: int, hi: int) -> pd.Series:
+    v = (s / step).round() * step
+    v = v.clip(lower=lo, upper=hi)
+    return v.fillna(NA_SENTINEL).astype(int)
 
 
 def build_cube(verbose: bool = True) -> dict:
@@ -74,41 +102,52 @@ def build_cube(verbose: bool = True) -> dict:
     anio = df["PRIMER_ANIO_MOVILIDAD"]
     d["anio_mov"] = np.where(anio.notna(), anio.fillna(0).astype(int).astype(str), "N/A")
 
-    d["pga_bin"] = _bin_series(df["PGA_ULTIMO"], [0, 3, 3.5, 4, 4.5, 5.01],
-                               ["<3.0", "3.0-3.5", "3.5-4.0", "4.0-4.5", "4.5-5.0"])
-    d["avance_bin"] = _bin_series(df["SEMESTRE_AVANCE"], [0, 2, 4, 6, 8, 10, 100],
-                                  ["0-2", "2-4", "4-6", "6-8", "8-10", "10+"])
-    d["icfes_bin"] = _bin_series(df["ICFES_PUNTAJE_TOTAL"], [0, 300, 350, 400, 2000],
-                                 ["<300", "300-350", "350-400", "400+"])
+    # Dimensiones numéricas discretizadas (enteros).
+    d["pga"] = _discretize_pga(df["PGA_ULTIMO"])
+    d["avance"] = _discretize_step(df["SEMESTRE_AVANCE"], 2, 0, 16)
+    d["icfes"] = _discretize_step(df["ICFES_PUNTAJE_TOTAL"], 50, 100, 500)
+    d["edad"] = _discretize_step(df["EDAD"], 5, 15, 45)
+
+    num_cols = list(NUM_DIMS)
+    dims = CAT_DIMS + num_cols
 
     # Agregación: conteo de estudiantes y de participantes por celda.
-    cube = (d.groupby(CUBE_DIMS, dropna=False)
+    cube = (d.groupby(dims, dropna=False)
               .agg(n=("participa", "size"), part=("participa", "sum"))
               .reset_index())
     cube["n"] = cube["n"].astype(int)
     cube["part"] = cube["part"].astype(int)
 
-    # Codificar dimensiones categóricas como índices enteros + diccionarios,
-    # para reducir el tamaño del JSON (strings repetidos se guardan una vez).
-    dicts = {}
-    rows = []
-    cat_dims = [c for c in CUBE_DIMS]
+    # Codificar las dimensiones categóricas como índices enteros + diccionarios.
     codebooks = {}
-    for dim in cat_dims:
+    dicts = {}
+    for dim in CAT_DIMS:
         cats = sorted(cube[dim].astype(str).unique().tolist())
         codebooks[dim] = {v: i for i, v in enumerate(cats)}
         dicts[dim] = cats
 
-    for _, r in cube.iterrows():
-        row = [codebooks[dim][str(r[dim])] for dim in cat_dims]
-        row.append(int(r["n"]))
-        row.append(int(r["part"]))
+    rows = []
+    for r in cube.itertuples(index=False):
+        rd = r._asdict()
+        row = [codebooks[dim][str(rd[dim])] for dim in CAT_DIMS]
+        row += [int(rd[dim]) for dim in num_cols]  # numéricos en bruto (ya enteros)
+        row.append(int(rd["n"]))
+        row.append(int(rd["part"]))
         rows.append(row)
 
-    # Metadatos y catálogos para la interfaz.
+    # Metadatos de los sliders: rango real y paso, en unidades del usuario.
+    num_meta = {}
+    for name, spec in NUM_DIMS.items():
+        num_meta[name] = {
+            "scale": spec["scale"],
+            "step": spec["step"],
+            "min": spec["lo"],
+            "max": spec["hi"],
+            "dec": spec["dec"],
+            "unit": spec["unit"],
+        }
+
     eventos = pd.read_parquet(config.MOBILITY_EVENTS)
-    eventos_por_anio = (eventos[eventos["ANIO"] >= 2002]
-                        .groupby("ANIO").size().astype(int))
     eventos_modalidad_anio = (eventos[eventos["ANIO"] >= 2010]
                               .groupby(["ANIO", "MODALIDAD"]).size()
                               .reset_index(name="n"))
@@ -119,13 +158,14 @@ def build_cube(verbose: bool = True) -> dict:
             "n_estudiantes": int(len(df)),
             "n_participantes": int(df["PARTICIPA"].sum()),
             "n_eventos": int(len(eventos)),
-            "dims": cat_dims,
+            "cat_dims": CAT_DIMS,
+            "num_dims": num_cols,
+            "num_meta": num_meta,
+            "na_sentinel": NA_SENTINEL,
         },
         "codebooks": dicts,
-        "rows": rows,  # [idx_dim_0, ..., idx_dim_k, n, part]
-        "eventos_anio": [
-            {"anio": int(a), "n": int(v)} for a, v in eventos_por_anio.items()
-        ],
+        # cada fila: [idx_cat_0..idx_cat_k, num_0..num_m, n, part]
+        "rows": rows,
         "eventos_modalidad_anio": [
             {"anio": int(r.ANIO), "modalidad": r.MODALIDAD, "n": int(r.n)}
             for r in eventos_modalidad_anio.itertuples()
@@ -133,7 +173,8 @@ def build_cube(verbose: bool = True) -> dict:
     }
 
     if verbose:
-        print(f"Celdas del cubo: {len(rows):,} | dimensiones: {len(cat_dims)}")
+        print(f"Celdas del cubo: {len(rows):,} | "
+              f"cat: {len(CAT_DIMS)} | num: {len(num_cols)}")
         print(f"Estudiantes: {out['meta']['n_estudiantes']:,} | "
               f"participantes: {out['meta']['n_participantes']:,}")
     return out

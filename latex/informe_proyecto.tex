@@ -65,9 +65,11 @@ socioeconómico y asociaciones consistentes entre participación y desempeño
 académico. Sobre esta base, y en acuerdo con la dirección del proyecto, el alcance
 se reorientó hacia un producto \textbf{descriptivo y exploratorio}: se diseñó e
 implementó un \textbf{dashboard web interactivo} (React, arquitectura sin servidor
-sobre un cubo de datos pre-agregado) que permite filtrar la participación por once
-dimensiones y visualizarla con gráficos interactivos. Queda fuera del alcance la
-construcción de modelos predictivos.
+sobre un cubo de datos pre-agregado) que permite filtrar la participación por
+múltiples dimensiones ---filtros categóricos y \emph{sliders} de rango para las
+variables numéricas--- y visualizarla con gráficos interactivos, incluyendo
+comparaciones entre estudiantes con y sin internacionalización. Queda fuera del
+alcance la construcción de modelos predictivos.
 \end{abstract}
 
 \tableofcontents
@@ -545,13 +547,18 @@ dos piezas:
     \texttt{src/export\_dashboard.py} transforma el dataset analítico en un
     \textbf{cubo pre-agregado} y lo exporta como un único archivo JSON
     (\texttt{dashboard/public/data.json}). Cada fila del cubo es una combinación
-    única de las dimensiones categóricas y lleva el número de estudiantes y de
-    participantes. El cubo resultante tiene $54\,762$ celdas y pesa $1{,}9$~MB
-    (muy comprimible).
+    única de dimensiones y lleva el número de estudiantes y de participantes. El
+    cubo combina \textbf{nueve dimensiones categóricas} con \textbf{cuatro
+    dimensiones numéricas discretizadas} (PGA, semestre de avance, puntaje ICFES y
+    edad), estas últimas guardadas como enteros en una rejilla fina (p.\,ej. PGA en
+    pasos de $0{,}25$) para habilitar \emph{sliders} de rango sin perder la
+    capacidad de \emph{cross-filtering} exacto. El cubo resultante tiene
+    $85\,221$ celdas y pesa $3{,}5$~MB, que se reducen a $\sim 0{,}34$~MB al
+    comprimir con gzip (muy ligero en la transferencia).
     \item \textbf{Capa de presentación (React + Vite).} Una aplicación de página
     única construida con React y la biblioteca de gráficos \emph{Recharts},
     elegida por su bajo peso e interactividad nativa (\emph{hover}, \emph{tooltips}).
-    El \emph{bundle} de producción pesa $\sim 158$~KB comprimido, acorde con el
+    El \emph{bundle} de producción pesa $\sim 169$~KB comprimido, acorde con el
     requisito de una herramienta ligera. El navegador recalcula todos los
     indicadores sumando las celdas del cubo que satisfacen los filtros activos.
 \end{enumerate}
@@ -565,20 +572,48 @@ individuales}, solo conteos agregados, en coherencia con la Ley 1581 de 2012
 \cite{ley1581,decreto1377}.
 
 \subsection{Dimensiones de filtrado}
-El tablero expone \textbf{once filtros de selección múltiple} con conteo
-contextual (cada opción muestra cuántos estudiantes resultarían bajo el resto de
-filtros activos) y \emph{cross-filtering} en vivo: nivel académico, facultad,
-programa, género, estrato social, tipo de admisión, estado académico, modalidad de
-movilidad, y rangos de PGA, de semestre de avance y de puntaje ICFES. Las
-variables numéricas se discretizan en rangos legibles para el usuario. Cualquier
-combinación de filtros recalcula instantáneamente los indicadores y gráficos.
+El tablero expone dos tipos de filtros con \emph{cross-filtering} en vivo:
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Ocho filtros categóricos de selección múltiple}: nivel académico,
+    facultad, programa, género, estrato social, tipo de admisión, estado académico
+    y modalidad de movilidad. Junto a cada opción se muestra un conteo contextual
+    que, por decisión de diseño, indica el número de estudiantes \textbf{con
+    experiencia de internacionalización} (participantes) ---no el total--- bajo el
+    resto de filtros activos, de modo que el usuario vea de inmediato dónde se
+    concentra la movilidad.
+    \item \textbf{Cuatro \emph{sliders} de rango} para las variables numéricas
+    (PGA, semestre de avance, puntaje ICFES y edad). Cada \emph{slider} tiene doble
+    manija y, además, \textbf{campos de entrada manual en ambos extremos}: el
+    usuario puede escribir un valor exacto, que se valida contra el rango real de la
+    variable y se ajusta al paso de la rejilla. Un control adicional permite incluir
+    o excluir a los estudiantes sin dato en esa variable.
+\end{itemize}
+
+Cualquier combinación de filtros recalcula instantáneamente los indicadores y
+gráficos.
 
 \subsection{Componentes de visualización}
 El tablero se organiza alrededor de las preguntas analíticas
-(Tabla~\ref{tab:modulos}). Todas las visualizaciones responden al paso del mouse
-con \emph{tooltips} que detallan estudiantes, participantes y tasa; en los gráficos
-de ranking se puede alternar entre número absoluto y tasa, y hacer clic en una
-barra de facultad o programa para filtrar por ella.
+(Tabla~\ref{tab:modulos}), agrupadas en cuatro bloques: indicadores (KPI),
+\emph{participantes vs.\ no participantes}, \emph{distribuciones numéricas} y
+\emph{rankings por categoría}. Mejoras de legibilidad e interactividad:
+
+\begin{itemize}[leftmargin=*]
+    \item Cada barra muestra su valor \textbf{siempre visible} como etiqueta, no
+    solo al pasar el mouse.
+    \item Cada gráfico de ranking exhibe una etiqueta de \textbf{Total} (suma de
+    todas las categorías), como anotación y no como una barra adicional.
+    \item Los gráficos de ranking permiten alternar la métrica entre número de
+    estudiantes, número de participantes y tasa (\%).
+    \item Las comparaciones \emph{participantes vs.\ no participantes} muestran, para
+    cada categoría, qué porcentaje de cada grupo cae en ella, revelando en qué se
+    diferencian ambos grupos.
+    \item Las distribuciones numéricas combinan barras (número de estudiantes) con
+    una línea de tasa de participación en doble eje.
+    \item Se conservan los \emph{tooltips} de \emph{hover} con el detalle, y el clic
+    sobre una barra de facultad o programa aplica el filtro correspondiente.
+\end{itemize}
 
 \begin{table}[H]
 \centering
@@ -591,12 +626,14 @@ barra de facultad o programa para filtrar por ella.
 \midrule
 Indicadores (KPI) & Estudiantes de la selección, participantes, tasa y eventos. & — \\
 Serie temporal & Movilidad por año (con franja de pandemia). & PA1 \\
-Ranking por facultad & Participación por facultad (n.º / tasa). & PA2 \\
-Ranking por programa & Top programas de la selección. & PA2 \\
+Donut de composición & Participantes vs.\ no participantes en la selección. & PA5 \\
+Perfil comparado (estrato, facultad, tipo de admisión) & \% de cada grupo (participa / no participa) por categoría. & PA5--PA6 \\
+Distribución de PGA / avance / ICFES / edad & Barras (estudiantes) + línea de tasa, doble eje. & PA4--PA6 \\
+Ranking por facultad & Participación por facultad; clic para filtrar. & PA2 \\
+Ranking por programa & Top programas de la selección; clic para filtrar. & PA2 \\
 Modalidades & Composición por tipo de experiencia. & PA3 \\
 Modalidades en el tiempo & Área apilada por modalidad desde 2010. & PA3 \\
-Participación por avance & Tasa según semestre de avance. & PA4 \\
-Perfil (PGA, estrato) & Tasa por rango de PGA y por estrato. & PA5--PA6 \\
+Ranking por tipo de admisión / género / nivel & Participación por esas dimensiones. & PA6 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -606,8 +643,11 @@ El tablero se regenera de forma reproducible: \texttt{python -m src.export\_dash
 reconstruye el cubo a partir del dataset analítico, y \texttt{npm run build} dentro
 de \texttt{dashboard/} produce la versión estática desplegable. Como validación, se
 verificó que los indicadores calculados en el navegador coinciden con los del
-pipeline (p.\,ej. $233\,987$ estudiantes y tasa global $3{,}43\%$; al filtrar
-pregrado, $140\,422$ estudiantes y $4{,}15\%$; pregrado con estrato~6, $9{,}48\%$).
+pipeline: $233\,987$ estudiantes y tasa global $3{,}43\%$; al filtrar pregrado,
+$140\,422$ estudiantes y $4{,}15\%$; pregrado con estrato~6, $9{,}48\%$. También se
+comprobaron los \emph{sliders}: al restringir el PGA a $\geq 4{,}5$ la tasa de
+participación sube a $7{,}3\%$, y el cruce de pregrado con ICFES $\geq 400$ da
+$5{,}3\%$, ambos coherentes con las asociaciones del análisis exploratorio.
 
 % ======================================================================
 \section{Trazabilidad de decisiones metodológicas}
@@ -655,8 +695,14 @@ predictivo. & \S\ref{sec:reorientacion} \\
 Dashboard sin servidor sobre cubo agregado &
 Mantiene la app ligera, permite filtrar por cualquier combinación en el cliente y
 no expone microdatos (minimización). & \texttt{export\_dashboard.py}, \S\ref{sec:dashboard} \\
-Discretización de variables numéricas en rangos &
-Filtros legibles y celdas de cubo acotadas. & \texttt{export\_dashboard.py} \\
+Discretización fina de variables numéricas (rejilla, no rangos fijos) &
+Habilita \emph{sliders} de rango con entrada manual manteniendo el cubo acotado y
+el cross-filtering exacto. & \texttt{export\_dashboard.py}, \texttt{RangeSlider} \\
+Conteo de participantes (no total) junto a cada filtro &
+El usuario quiere ver dónde se concentra la internacionalización, no el tamaño de
+cada grupo. & \texttt{FilterGroup}, \texttt{App.jsx} \\
+Etiquetas de valor y de ``Total'' siempre visibles en las barras &
+Legibilidad sin depender del \emph{hover}. & \texttt{BarRanking} \\
 Estrato/género solo para equidad &
 Principio de minimización de datos (Ley 1581 de 2012). & nb 04--05 \\
 \bottomrule

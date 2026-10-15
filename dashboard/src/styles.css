@@ -191,3 +191,140 @@ body {
 .custom-tooltip .tt-title { font-weight: 700; margin-bottom: 4px; }
 .custom-tooltip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
 .custom-tooltip .tt-row .tt-k { color: var(--muted); }
+
+/* ---------- Notas e índices del sidebar ---------- */
+.sidebar-note {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 7px 9px;
+  margin: 10px 0 14px;
+  line-height: 1.4;
+}
+.sidebar-note strong { color: var(--accent); }
+
+.sidebar-section {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin: 8px 0 10px;
+}
+
+/* ---------- Range slider con doble control ---------- */
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.range-num {
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.range-num:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+.range-dash { color: var(--muted); }
+
+.dual-slider {
+  position: relative;
+  height: 26px;
+  margin: 2px 2px 2px;
+}
+.dual-slider .slider-track {
+  position: absolute;
+  top: 11px; left: 0; right: 0; height: 4px;
+  background: var(--line); border-radius: 3px;
+}
+.dual-slider .slider-range {
+  position: absolute;
+  top: 11px; height: 4px;
+  background: var(--accent); border-radius: 3px;
+}
+.dual-slider input[type="range"] {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 26px;
+}
+.dual-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.dual-slider input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  cursor: pointer;
+}
+.dual-slider input[type="range"]::-moz-range-track { background: none; }
+
+.na-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  cursor: pointer;
+}
+.na-toggle input { accent-color: var(--accent); }
+
+/* ---------- Total badge y subtítulo de tarjeta ---------- */
+.card-sub-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.card-sub-row .card-sub { margin: 0; }
+.total-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.total-badge strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------- Títulos de sección ---------- */
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 24px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--accent-soft);
+}
+
+.donut-center-note {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin: -4px 0 6px;
+}
