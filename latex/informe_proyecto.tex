@@ -504,6 +504,94 @@ Avance mediano de participantes        & 8{,}75 semestres \\
 \end{table}
 
 % ======================================================================
+\section{Hallazgos e insights principales}
+\label{sec:insights}
+% ======================================================================
+Esta sección sintetiza los resultados del análisis exploratorio en hallazgos
+accionables para la Oficina de Internacionalización. Todas las cifras provienen
+del dataset analítico y son reproducibles con el pipeline; salvo indicación
+contraria, se refieren al subconjunto de \textbf{pregrado} ($140\,422$ estudiantes),
+foco del proyecto. Se reitera la advertencia metodológica: las relaciones
+reportadas son \emph{asociaciones} observadas en los datos, no relaciones causales.
+
+\subsection*{Insight 1 --- La participación es minoritaria y muy concentrada}
+Solo el $4{,}15\%$ de los estudiantes de pregrado registra alguna experiencia de
+internacionalización. Además, la participación está \textbf{fuertemente
+concentrada}: las tres facultades con más participantes ---Ingeniería,
+Administración y Arquitectura y Diseño--- reúnen el $66\%$ de todos los
+participantes de pregrado, y las cinco primeras, el $84\%$.
+\emph{Implicación:} las estrategias de promoción pueden segmentarse por unidad
+académica, y existe un amplio margen de crecimiento en las facultades hoy
+subrepresentadas.
+
+\subsection*{Insight 2 --- Volumen y propensión no coinciden}
+Conviene distinguir dos lecturas. \textbf{Ingeniería} aporta el mayor
+\emph{número} de participantes ($1\,529$) pero con una tasa baja ($3{,}1\%$),
+porque es una facultad muy grande. \textbf{Administración}, en cambio, tiene la
+\emph{tasa} más alta ($12{,}3\%$): proporcionalmente, es la facultad donde la
+movilidad está más instalada en la cultura del programa. La brecha entre la
+facultad de mayor y menor tasa (entre las grandes) supera un orden de magnitud.
+\emph{Implicación:} el dashboard permite alternar entre ``número'' y ``tasa''
+precisamente para no confundir tamaño con propensión al diseñar intervenciones.
+
+\subsection*{Insight 3 --- Existe un marcado gradiente socioeconómico}
+La tasa de participación crece de forma monótona con el estrato: pasa de
+$\sim 0{,}4\%$ en estratos 1--2 a $9{,}5\%$ en estrato 6. Un estudiante de estrato
+6 participa cerca de \textbf{22 veces más} que uno de estrato 1--2. Este es el
+hallazgo de equidad más relevante del análisis: sugiere que el costo y las
+condiciones de la movilidad internacional podrían estar actuando como barrera
+para los estratos más bajos. \emph{Implicación:} es un insumo directo para
+políticas de becas o apoyos focalizados; debe comunicarse como una brecha a
+atender, nunca como un criterio de selección.
+
+\subsection*{Insight 4 --- Brecha de género moderada pero consistente}
+Las mujeres participan más que los hombres ($4{,}7\%$ frente a $3{,}7\%$) y
+representan el $54\%$ de los participantes de pregrado. La diferencia es menor que
+la socioeconómica, pero estable.
+
+\subsection*{Insight 5 --- La movilidad ocurre en etapas avanzadas de la carrera}
+El $89\%$ de los participantes tiene siete o más semestres de avance al momento de
+su primera experiencia (avance mediano $8{,}8$ semestres, frente a $8{,}0$ en no
+participantes, con una distribución mucho más concentrada). La movilidad es,
+típicamente, una decisión de segunda mitad de carrera. \emph{Implicación:} las
+campañas de información son más pertinentes dirigidas a estudiantes de semestres
+intermedios, antes de esa ventana.
+
+\subsection*{Insight 6 --- Perfil académico más alto entre participantes}
+Los participantes tienden a tener mejor desempeño: su PGA mediano es $4{,}2$ (vs.
+$3{,}8$) y, sobre todo, el $77\%$ se ubica por encima de la mediana de su programa
+en percentil de PGA (y el $46\%$, por encima del percentil 75). También ingresaron
+con mejores puntajes (ICFES total e inglés). \emph{Implicación:} el buen
+desempeño se asocia con mayor participación; queda abierto para la Oficina
+indagar si esto refleja requisitos académicos de los programas de movilidad o
+autoselección de los estudiantes.
+
+\subsection*{Insight 7 --- El intercambio domina, pero hay diversidad de formatos}
+El $81\%$ de los eventos son intercambios internacionales; les siguen la doble
+titulación ($8{,}6\%$), el viaje internacional de estudio ($5{,}9\%$) y la semana
+internacional ($4{,}2\%$). El intercambio virtual es marginal ($0{,}3\%$) y aparece
+casi exclusivamente alrededor de 2020--2021. La movilidad recurrente existe pero es
+poco frecuente: solo el $12{,}7\%$ de los participantes registra más de una
+experiencia.
+
+\subsection*{Insight 8 --- Choque de la pandemia y recuperación con rebote}
+La movilidad promedió $\sim 414$ eventos anuales entre 2015 y 2019, cayó un
+$43\%$ en 2020 y promedió apenas $\sim 262$ en 2020--2021, para recuperarse con
+fuerza desde 2022 ($\sim 558$ anuales en 2022--2025) y superar en $\sim 31\%$ el
+nivel prepandemia hacia 2023. \emph{Implicación:} la demanda de movilidad no solo
+se recuperó sino que creció, lo que es relevante para la planeación de capacidad
+de la Oficina.
+
+\subsection*{Síntesis}
+En conjunto, el perfil típico del participante de pregrado es un estudiante de
+estrato alto, en la segunda mitad de la carrera, con desempeño por encima de la
+mediana de su programa, que realiza un intercambio internacional. Los dos frentes
+con mayor potencial de política son la \textbf{equidad socioeconómica} (reducir la
+brecha por estrato) y la \textbf{ampliación hacia facultades de baja propensión}.
+Estos hallazgos son explorables de forma interactiva en el dashboard
+(Sección~\ref{sec:dashboard}).
+
+% ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
 \label{sec:reorientacion}
 % ======================================================================

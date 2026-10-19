@@ -172,8 +172,14 @@ function Dashboard({ cube, filters, toggleCat }) {
       o[r.modalidad] = r.n
       byAnio.set(r.anio, o)
     }
-    return [...byAnio.values()].sort((a, b) => a.anio - b.anio)
-  }, [cube])
+    // Rellenar con 0 las modalidades ausentes en cada año: sin esto, el área
+    // apilada interpreta los valores faltantes como huecos y se ve distorsionada.
+    const out = [...byAnio.values()].sort((a, b) => a.anio - b.anio)
+    for (const row of out) {
+      for (const m of modalities) if (row[m] == null) row[m] = 0
+    }
+    return out
+  }, [cube, modalities])
 
   // Perfil comparado participantes vs no participantes sobre una dimensión:
   // qué % de cada grupo cae en cada categoría.
