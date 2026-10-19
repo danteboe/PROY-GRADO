@@ -152,6 +152,63 @@ def build_cube(verbose: bool = True) -> dict:
                               .groupby(["ANIO", "MODALIDAD"]).size()
                               .reset_index(name="n"))
 
+    # ----- Vistas agregadas adicionales (responden preguntas de negocio) -----
+    df_fac = df.copy()
+    df_fac["FAC"] = df_fac["FACULTAD"].map(lambda c: fac_map.get(c, c)).fillna("Sin dato")
+
+    # (a) Matriz de oportunidad por facultad: volumen vs. tasa de participación.
+    opp = (df_fac.groupby("FAC")["PARTICIPA"].agg(n="size", part="sum").reset_index())
+    opp = opp[opp["n"] >= 500].copy()
+    opp["tasa"] = (100 * opp["part"] / opp["n"]).round(2)
+    opp["no_part"] = opp["n"] - opp["part"]
+    oportunidad = [
+        {"facultad": r.FAC, "n": int(r.n), "part": int(r.part),
+         "noPart": int(r.no_part), "tasa": float(r.tasa)}
+        for r in opp.sort_values("n", ascending=False).itertuples()
+    ]
+
+    # (b) Heatmap facultad x estrato (tasa de participación) en pregrado.
+    preg = df_fac[df_fac["ES_PREGRADO"]].copy()
+    preg["EST"] = preg["ESTRATO_SOCIAL"].fillna("Sin dato").astype(str)
+    hm = (preg.groupby(["FAC", "EST"])["PARTICIPA"].agg(n="size", part="sum").reset_index())
+    hm = hm[hm["n"] >= 30].copy()
+    hm["tasa"] = (100 * hm["part"] / hm["n"]).round(2)
+    heatmap_fac_estrato = [
+        {"facultad": r.FAC, "estrato": r.EST, "n": int(r.n),
+         "part": int(r.part), "tasa": float(r.tasa)}
+        for r in hm.itertuples()
+    ]
+
+    # (c) Modalidad x facultad (composición de la movilidad por facultad).
+    evj = eventos.merge(df_fac[[KEY, "FAC"]], on=KEY, how="left")
+    mf = evj.groupby(["FAC", "MODALIDAD"]).size().reset_index(name="n")
+    tot_fac = mf.groupby("FAC")["n"].transform("sum")
+    mf = mf[tot_fac >= 50].copy()
+    modalidad_facultad = [
+        {"facultad": r.FAC, "modalidad": r.MODALIDAD, "n": int(r.n)}
+        for r in mf.itertuples()
+    ]
+
+    # (d) Estacionalidad: eventos por año y semestre (ciclo 10 vs 20).
+    ev2 = eventos.copy()
+    ev2["ciclo"] = ev2["PERIODO"].astype(str).str[4:6]
+    ciclo_map = {"10": "Primer semestre", "20": "Segundo semestre"}
+    ev2["sem"] = ev2["ciclo"].map(ciclo_map)
+    seas = ev2[ev2["sem"].notna() & (ev2["ANIO"] >= 2010)]
+    estacionalidad = [
+        {"anio": int(r.ANIO), "sem": r.sem, "n": int(r.n)}
+        for r in seas.groupby(["ANIO", "sem"]).size().reset_index(name="n").itertuples()
+    ]
+    estacionalidad_total = [
+        {"sem": k, "n": int(v)} for k, v in ev2["sem"].value_counts().items()
+    ]
+
+    # (e) Resultado académico de la experiencia de movilidad.
+    resultado_mov = [
+        {"resultado": k, "n": int(v)}
+        for k, v in eventos["RESULTADO"].value_counts().items()
+    ]
+
     out = {
         "meta": {
             "generado": pd.Timestamp.now().strftime("%Y-%m-%d"),
@@ -170,6 +227,12 @@ def build_cube(verbose: bool = True) -> dict:
             {"anio": int(r.ANIO), "modalidad": r.MODALIDAD, "n": int(r.n)}
             for r in eventos_modalidad_anio.itertuples()
         ],
+        "oportunidad": oportunidad,
+        "heatmap_fac_estrato": heatmap_fac_estrato,
+        "modalidad_facultad": modalidad_facultad,
+        "estacionalidad": estacionalidad,
+        "estacionalidad_total": estacionalidad_total,
+        "resultado_mov": resultado_mov,
     }
 
     if verbose:

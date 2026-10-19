@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import {
   loadCube, applyFilters, totals, aggregateBy, aggregateByNumeric,
   fmtInt, fmtPct, DIM_LABELS,
@@ -11,6 +12,10 @@ import ModalityArea from './components/ModalityArea.jsx'
 import DonutParticipacion from './components/DonutParticipacion.jsx'
 import CompareProfile from './components/CompareProfile.jsx'
 import NumericDist from './components/NumericDist.jsx'
+import OpportunityScatter from './components/OpportunityScatter.jsx'
+import Heatmap from './components/Heatmap.jsx'
+import StackedByFaculty from './components/StackedByFaculty.jsx'
+import SeasonBars from './components/SeasonBars.jsx'
 import Kpi from './components/Kpi.jsx'
 
 const CAT_FILTER_DIMS = [
@@ -181,6 +186,36 @@ function Dashboard({ cube, filters, toggleCat }) {
     return out
   }, [cube, modalities])
 
+  // ---- Vistas de preguntas de negocio (globales, del cubo) ----
+  const avgRate = base.tasa
+  const modFacData = useMemo(() => {
+    // modalidad x facultad -> [{facultad, <mod>:n, ...}] con todas las modalidades
+    const byFac = new Map()
+    for (const r of cube.modalidadFacultad) {
+      const o = byFac.get(r.facultad) || { facultad: r.facultad, _tot: 0 }
+      o[r.modalidad] = r.n; o._tot += r.n
+      byFac.set(r.facultad, o)
+    }
+    const arr = [...byFac.values()].sort((a, b) => b._tot - a._tot)
+    for (const row of arr) for (const m of modalities) if (row[m] == null) row[m] = 0
+    return arr
+  }, [cube, modalities])
+
+  const seasonData = useMemo(() => {
+    const byAnio = new Map()
+    for (const r of cube.estacionalidad) {
+      const o = byAnio.get(r.anio) || { anio: r.anio }
+      o[r.sem] = r.n
+      byAnio.set(r.anio, o)
+    }
+    const arr = [...byAnio.values()].sort((a, b) => a.anio - b.anio)
+    for (const row of arr) {
+      if (row['Primer semestre'] == null) row['Primer semestre'] = 0
+      if (row['Segundo semestre'] == null) row['Segundo semestre'] = 0
+    }
+    return arr
+  }, [cube])
+
   // Perfil comparado participantes vs no participantes sobre una dimensión:
   // qué % de cada grupo cae en cada categoría.
   const compareOn = (dim, topN = 6) => {
@@ -344,6 +379,34 @@ function Dashboard({ cube, filters, toggleCat }) {
         modalities={modalities}
       />
 
+      {/* Preguntas de negocio (vistas históricas globales) */}
+      <div className="section-title">Preguntas de negocio</div>
+      <OpportunityScatter
+        title="¿Dónde está el mayor potencial de crecimiento? (por facultad)"
+        subtitle="Volumen de estudiantes vs. tasa de participación. Tamaño = estudiantes que aún no participan."
+        data={cube.oportunidad}
+        avgRate={avgRate}
+      />
+      <Heatmap
+        title="Brecha socioeconómica dentro de cada facultad"
+        subtitle="Tasa de participación (%) por facultad y estrato, en pregrado."
+        data={cube.heatmapFacEstrato}
+      />
+      <StackedByFaculty
+        title="¿Qué modalidad prefiere cada facultad?"
+        subtitle="Composición (%) de los eventos de movilidad por facultad."
+        data={modFacData}
+        modalities={modalities}
+      />
+      <div className="grid">
+        <SeasonBars
+          title="Estacionalidad: ¿en qué semestre se sale más?"
+          subtitle="Eventos por año, separando primer y segundo semestre."
+          data={seasonData}
+        />
+        <DonutResultado resultado={cube.resultadoMov} />
+      </div>
+
       <p className="footnote">
         Fuente: registros académicos anonimizados de la Universidad de los Andes. La señal de
         internacionalización se deriva de cursos de movilidad en la historia académica. Los datos
@@ -351,5 +414,46 @@ function Dashboard({ cube, filters, toggleCat }) {
         datos, Ley 1581 de 2012). Las asociaciones mostradas no implican causalidad.
       </p>
     </main>
+  )
+}
+
+// Donut del resultado académico de la experiencia de movilidad.
+function DonutResultado({ resultado }) {
+  const COLORS = {
+    'APROBADO': '#0f766e', 'NO TERMINADO': '#d97706', 'REPROBADO': '#dc2626',
+    'RETIRADO': '#9333ea', 'SIN INFORMACION': '#94a3b8', 'PENDIENTE': '#64748b',
+    'INCOMPLETO': '#cbd5e1',
+  }
+  const total = resultado.reduce((a, r) => a + r.n, 0)
+  const data = resultado.map((r) => ({ name: r.resultado, value: r.n, color: COLORS[r.resultado] || '#94a3b8' }))
+  const aprob = resultado.find((r) => r.resultado === 'APROBADO')
+  const pctAprob = aprob && total ? (100 * aprob.n) / total : 0
+  const tip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null
+    const d = payload[0]
+    return (
+      <div className="custom-tooltip">
+        <div className="tt-title">{d.name}</div>
+        <div className="tt-row"><span className="tt-k">Eventos</span><span>{fmtInt(d.value)}</span></div>
+        <div className="tt-row"><span className="tt-k">Porcentaje</span><span>{fmtPct(total ? 100 * d.value / total : 0)}</span></div>
+      </div>
+    )
+  }
+  return (
+    <div className="card">
+      <h3>¿Terminan bien la experiencia?</h3>
+      <p className="card-sub">Resultado académico del curso de movilidad.</p>
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90}
+               paddingAngle={2} isAnimationActive={false}>
+            {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+          </Pie>
+          <Tooltip content={tip} />
+          <Legend wrapperStyle={{ fontSize: 10 }} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="donut-center-note">{fmtPct(pctAprob, 1)} de las experiencias se aprueban</div>
+    </div>
   )
 }

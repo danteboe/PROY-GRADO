@@ -52,6 +52,13 @@ export async function loadCube() {
     codebooks: raw.codebooks,
     rows,
     eventosModalidadAnio: raw.eventos_modalidad_anio,
+    // Vistas agregadas adicionales (globales, para preguntas de negocio).
+    oportunidad: raw.oportunidad || [],
+    heatmapFacEstrato: raw.heatmap_fac_estrato || [],
+    modalidadFacultad: raw.modalidad_facultad || [],
+    estacionalidad: raw.estacionalidad || [],
+    estacionalidadTotal: raw.estacionalidad_total || [],
+    resultadoMov: raw.resultado_mov || [],
   }
 }
 

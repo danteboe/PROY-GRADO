@@ -328,3 +328,68 @@ body {
   color: var(--muted);
   margin: -4px 0 6px;
 }
+
+/* ---------- Nota al pie de gráfico ---------- */
+.chart-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  margin: 2px 0 8px;
+}
+
+/* ---------- Heatmap ---------- */
+.heatmap-scroll { overflow-x: auto; }
+table.heatmap {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+table.heatmap th, table.heatmap td {
+  border: 1px solid #fff;
+  text-align: center;
+  padding: 0;
+}
+table.heatmap thead th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 6px;
+  position: sticky;
+  top: 0;
+}
+.hm-corner { text-align: left !important; min-width: 150px; }
+.hm-rowlabel {
+  text-align: left !important;
+  padding: 4px 8px !important;
+  background: #f8fafc;
+  color: var(--ink);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.hm-cell {
+  position: relative;
+  height: 30px;
+  min-width: 46px;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  font-weight: 600;
+}
+.hm-tip {
+  position: absolute;
+  z-index: 10;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 6px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 11px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}

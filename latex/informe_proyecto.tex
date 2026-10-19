@@ -582,14 +582,49 @@ nivel prepandemia hacia 2023. \emph{Implicación:} la demanda de movilidad no so
 se recuperó sino que creció, lo que es relevante para la planeación de capacidad
 de la Oficina.
 
+\subsection*{Insight 9 --- El mayor potencial de crecimiento está en Ingeniería}
+Cruzando volumen y propensión (matriz de oportunidad del dashboard), Ingeniería
+destaca como la mayor oportunidad absoluta: concentra más de $71\,000$ estudiantes
+que aún no participan, con una tasa de apenas $2{,}5\%$. Elevar modestamente esa
+tasa movilizaría a cientos de estudiantes adicionales. \emph{Implicación:} una
+intervención focalizada en las facultades grandes y de baja propensión
+(Ingeniería, Ciencias, Medicina) tendría más impacto absoluto que reforzar las que
+ya participan mucho.
+
+\subsection*{Insight 10 --- La brecha socioeconómica persiste dentro de las facultades}
+El gradiente por estrato no es un artefacto de la composición por facultad: se
+reproduce \emph{dentro} de cada una. Por ejemplo, en Administración la tasa va de
+$1{,}1\%$ (estrato 1) a $15{,}8\%$ (estrato 6). Es decir, incluso comparando
+estudiantes del mismo programa, el estrato sigue asociado con la participación.
+\emph{Implicación:} refuerza que la barrera es probablemente económica y no solo
+de oferta por facultad.
+
+\subsection*{Insight 11 --- Cada facultad tiene su ``estilo'' de movilidad}
+La composición de modalidades difiere marcadamente por facultad. Ingeniería y
+Economía concentran su movilidad en el intercambio internacional
+($80\%$ y $96\%$ respectivamente), mientras que Administración diversifica mucho
+más: solo el $59\%$ son intercambios y el resto se reparte entre viajes
+internacionales de estudio ($18\%$), semanas internacionales ($13\%$) y doble
+titulación ($10\%$). \emph{Implicación:} las estrategias de promoción y los
+convenios pueden adaptarse al formato predominante de cada facultad.
+
+\subsection*{Insight 12 --- Leve preferencia por el segundo semestre y alta tasa de finalización}
+La movilidad se reparte de forma relativamente pareja entre semestres, con una
+ligera preferencia por el segundo ($52\%$ vs.\ $48\%$). Y, de forma tranquilizadora,
+el $95\%$ de las experiencias de movilidad se aprueban (apenas un $2{,}8\%$ queda
+``no terminada''), lo que indica que, una vez iniciada, la experiencia se completa
+satisfactoriamente en la gran mayoría de los casos.
+
 \subsection*{Síntesis}
 En conjunto, el perfil típico del participante de pregrado es un estudiante de
 estrato alto, en la segunda mitad de la carrera, con desempeño por encima de la
-mediana de su programa, que realiza un intercambio internacional. Los dos frentes
-con mayor potencial de política son la \textbf{equidad socioeconómica} (reducir la
-brecha por estrato) y la \textbf{ampliación hacia facultades de baja propensión}.
-Estos hallazgos son explorables de forma interactiva en el dashboard
-(Sección~\ref{sec:dashboard}).
+mediana de su programa, que realiza un intercambio internacional y lo completa con
+éxito. Los dos frentes con mayor potencial de política son la \textbf{equidad
+socioeconómica} (reducir la brecha por estrato, que persiste incluso dentro de
+cada facultad) y la \textbf{ampliación hacia facultades grandes de baja propensión}
+como Ingeniería. Todos estos hallazgos son explorables de forma interactiva en el
+dashboard (Sección~\ref{sec:dashboard}), que incluye vistas específicas para cada
+pregunta de negocio.
 
 % ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
@@ -722,9 +757,25 @@ Ranking por programa & Top programas de la selección; clic para filtrar. & PA2 
 Modalidades & Composición por tipo de experiencia. & PA3 \\
 Modalidades en el tiempo & Área apilada por modalidad desde 2010. & PA3 \\
 Ranking por tipo de admisión / género / nivel & Participación por esas dimensiones. & PA6 \\
+Matriz de oportunidad & Volumen vs.\ tasa por facultad (burbuja = no participantes). & PN1 \\
+Mapa de calor facultad~$\times$~estrato & Tasa de participación cruzada. & PN2 \\
+Modalidad por facultad & Composición (\%) de modalidad por facultad. & PN3 \\
+Estacionalidad & Eventos por año y semestre (1.\textordmasculine{} vs 2.\textordmasculine{}). & PN4 \\
+Resultado de la experiencia & \% de experiencias aprobadas / no terminadas. & PN5 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\noindent Las últimas cinco filas responden \emph{preguntas de negocio} (PN)
+adicionales, orientadas a la planeación de la Oficina:
+
+\begin{description}[leftmargin=1.4cm,style=nextline]
+    \item[PN1] ¿Dónde está el mayor potencial de crecimiento?
+    \item[PN2] ¿La brecha socioeconómica se repite dentro de cada facultad?
+    \item[PN3] ¿Qué modalidad de movilidad prefiere cada facultad?
+    \item[PN4] ¿Hay un semestre preferido para salir de movilidad?
+    \item[PN5] ¿Los estudiantes completan satisfactoriamente la experiencia?
+\end{description}
 
 \subsection{Reproducibilidad del dashboard}
 El tablero se regenera de forma reproducible: \texttt{python -m src.export\_dashboard}
