@@ -627,6 +627,120 @@ dashboard (Sección~\ref{sec:dashboard}), que incluye vistas específicas para c
 pregunta de negocio.
 
 % ======================================================================
+\section{Análisis comparativo inferencial (participantes vs. no participantes)}
+\label{sec:comparativo}
+% ======================================================================
+Esta sección profundiza, con un enfoque inferencial, en la pregunta de
+perfilamiento: \emph{¿qué distingue a quienes participan en internacionalización
+de quienes no?} Todas las cifras que aparecen aquí provienen de una \textbf{única
+fuente de cálculo} (\texttt{src/comparative\_stats.py}), la misma que alimenta el
+dashboard interactivo; las figuras y tablas se generan con el notebook
+\texttt{06\_comparativo\_inferencial} y el texto de síntesis se interpola
+automáticamente desde esos mismos resultados. En consecuencia, las magnitudes del
+informe y de la herramienta web son, por construcción, idénticas.
+
+\input{tablas/comparativo_narrativa.tex}
+
+\subsection{Enfoque: tamaño del efecto por encima de la significancia}
+Con un tamaño muestral tan grande ($n_{\text{part}} = 5\,821$ frente a
+$n_{\text{no}} = 134\,601$ en pregrado), prácticamente cualquier diferencia
+resulta estadísticamente ``significativa''. Por eso el análisis se ancla en el
+\textbf{tamaño del efecto} ---la $d$ de Cohen para variables numéricas y la $V$ de
+Cramér para categóricas--- y reporta los $p$-valores (de la $t$ de Welch y de
+Mann-Whitney) solo como respaldo, ya corregidos por comparaciones múltiples
+mediante Benjamini-Hochberg (FDR). Se mantiene el encuadre \emph{asociativo}: las
+diferencias descritas son patrones observados, no relaciones causales.
+
+\subsection{Variables numéricas}
+La Figura~\ref{fig:comp-boxplots} compara, mediante diagramas de caja (con bigotes
+de Tukey), la distribución de las variables numéricas de mayor efecto entre ambos
+grupos; la Figura~\ref{fig:comp-cohend} ordena todas las variables por su $d$ de
+Cohen. La Tabla~\ref{tab:comparativo-num} detalla medias por grupo, diferencia,
+intervalo de confianza al 95\%, $d$ de Cohen y los $p$-valores.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_comparativo_boxplots.png}
+\caption{Distribución comparada (bigotes de Tukey) de las variables numéricas con
+mayor tamaño de efecto, participantes vs. no participantes.}
+\label{fig:comp-boxplots}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_comparativo_cohend.png}
+\caption{Tamaño del efecto ($d$ de Cohen) por variable numérica. Un valor positivo
+indica una media mayor entre participantes. Las líneas marcan los umbrales
+convencionales 0{,}2 / 0{,}5 / 0{,}8.}
+\label{fig:comp-cohend}
+\end{figure}
+
+\input{tablas/comparativo_numericas.tex}
+
+Las diferencias de mayor magnitud se concentran en variables de \textbf{trayectoria
+y desempeño} (número de opciones inscritas, créditos aprobados, percentil de PGA,
+PGA y avance), todas a favor de los participantes. El perfil de ingreso (ICFES)
+muestra efectos de menores a moderados.
+
+\subsection{Variables categóricas}
+La Figura~\ref{fig:comp-cramersv} resume la asociación de cada variable categórica
+con la participación mediante la $V$ de Cramér; la
+Tabla~\ref{tab:comparativo-cat} acompaña con el estadístico chi-cuadrado, grados de
+libertad y $p$-valores corregidos.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_comparativo_cramersv.png}
+\caption{Asociación de cada variable categórica con la participación ($V$ de
+Cramér). Las líneas marcan los umbrales 0{,}10 / 0{,}20 / 0{,}30.}
+\label{fig:comp-cramersv}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Asociación de variables categóricas con la participación.}
+\label{tab:comparativo-cat}
+\small
+\input{tablas/comparativo_categoricas.tex}
+\end{table}
+
+El estrato social es la variable de equidad con mayor asociación, coherente con el
+gradiente socioeconómico descrito en la Sección~\ref{sec:insights}; la asociación
+con el género es trivial.
+
+\subsection{Modelo logístico multivariado (aproximación)}
+Como lectura multivariada complementaria se ajustó una regresión logística
+(\texttt{scikit-learn}, sin regularización, ponderada por clase) sobre predictores
+estandarizados, con intervalos de confianza por \emph{bootstrap}. La
+Tabla~\ref{tab:comparativo-log} presenta los \emph{odds ratios} y sus intervalos.
+
+\begin{table}[H]
+\centering
+\caption{Odds ratios del modelo logístico multivariado (predictores
+estandarizados). Intervalos de confianza al 95\% por bootstrap.}
+\label{tab:comparativo-log}
+\small
+\input{tablas/comparativo_logistica.tex}
+\end{table}
+
+\textbf{Advertencia de aproximación.} El modelo se ofrece como ayuda a la
+interpretación, no como instrumento predictivo: se ajusta por caso completo
+(\emph{listwise}), los intervalos provienen de bootstrap y \textbf{no se reportan
+$p$-valores analíticos} (no se emplea \texttt{statsmodels}). Los \emph{odds ratios}
+deben leerse como asociaciones ajustadas, condicionadas a los predictores
+incluidos.
+
+\subsection{Equidad, limitaciones y encuadre}
+El análisis confirma que las mayores diferencias entre grupos son de desempeño y
+trayectoria, mientras que la dimensión socioeconómica (estrato) aporta la
+asociación de equidad más relevante. Tres salvaguardas enmarcan la lectura:
+(i)~todo se reporta como \textbf{asociación}, nunca como causa; (ii)~se aplica
+\textbf{supresión de categorías con $n < 30$} y solo se publican agregados
+(minimización de datos, sin mínimos/máximos crudos); y (iii)~el gradiente por
+estrato debe comunicarse como una \textbf{brecha a atender} con apoyos focalizados,
+jamás como criterio de selección de estudiantes.
+
+% ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
 \label{sec:reorientacion}
 % ======================================================================
@@ -822,6 +936,16 @@ Las decisiones y su justificación se resumen a continuación.
     omite cuando la selección total es pequeña (menos de 200 estudiantes) para no
     vaciar el gráfico; la línea de referencia de ``media'' pasa a ser la \textbf{tasa
     de la selección}, coherente con que el resto del tablero responde a los filtros.
+    \item \textbf{Mapa de calor de brecha socioeconómica que respeta el filtro de
+    nivel.} El mapa de calor facultad~$\times$~estrato se recalcula a partir de la
+    selección activa y ahora respeta el \emph{filtro de nivel académico} (y los demás
+    filtros del panel) en lugar de forzar siempre \emph{pregrado}. Antes el cálculo
+    recortaba las filas a pregrado de forma incondicional, por lo que cambiar el
+    filtro de nivel ---por ejemplo, ``todo menos maestría''--- no alteraba la vista;
+    al eliminar ese recorte duplicado, el mapa refleja exactamente la selección del
+    usuario. Además, las observaciones con estrato \emph{``Sin dato''} ---un valor
+    legítimo del catálogo, distinto del centinela de dato faltante numérico--- se
+    muestran en su propia columna del eje de estratos en lugar de desaparecer.
     \item \textbf{Vistas que permanecen como histórico global.} Las vistas de
     \emph{modalidades en el tiempo}, \emph{modalidad por facultad},
     \emph{estacionalidad} y \emph{resultado de la experiencia} se mantienen como

@@ -1,0 +1,6 @@
+label,chi2,dof,p,cramers_v,magnitud_v,p_ajustada
+Género,86.01,2,0.0,0.02,trivial,0.0
+Estrato social,3134.68,6,0.0,0.15,pequeño,0.0
+Tipo de admisión,877.72,14,0.0,0.08,trivial,0.0
+Facultad,2875.52,12,0.0,0.14,pequeño,0.0
+Estado académico,7341.64,11,0.0,0.23,mediano,0.0

@@ -221,6 +221,101 @@ def _magnitud_v(v: float) -> str:
     return "grande"
 
 
+def _fmt(valor, campo: str) -> str:
+    """Formatea un número a la precisión publicada (DECIMALES) con coma decimal.
+
+    Única puerta de salida de las cifras citadas en la narrativa (M2): si el valor
+    es ``None`` devuelve "s. d." (sin dato). La coma decimal española hace el texto
+    coherente tanto para la web como para el informe LaTeX.
+    """
+    if valor is None:
+        return "s. d."
+    dec = DECIMALES.get(campo, 2)
+    return f"{float(valor):.{dec}f}".replace(".", ",")
+
+
+def construir_narrativa(out: dict) -> str:
+    """Construye la prosa narrativa del análisis comparativo a partir de `out`.
+
+    **Cero cifras tecleadas a mano** (M2): cada magnitud citada (d de Cohen de las
+    variables con mayor efecto, V de Cramér de estrato/género, tasas de
+    participación por estrato) se interpola desde el propio dict ``out`` que produce
+    ``compute_comparative``. Regenerar el análisis actualiza automáticamente el
+    texto. La misma prosa alimenta data.json (web) y el .tex del informe, de modo
+    que web e informe cuenten exactamente la misma historia con las mismas cifras.
+
+    Devuelve un único párrafo en español (sin comandos LaTeX): quien lo consuma lo
+    envuelve en el formato que necesite.
+    """
+    meta = out["meta"]
+    # Numéricas calculables ordenadas por tamaño de efecto |d| (mayor primero).
+    num_calc = [x for x in out["numericas"] if x.get("cohen_d") is not None]
+    num_orden = sorted(num_calc, key=lambda x: abs(x["cohen_d"]), reverse=True)
+    top = num_orden[:3]
+
+    # Fragmento con las variables de mayor efecto.
+    piezas_top = [
+        f"{x['label'].lower()} (d = {_fmt(x['cohen_d'], 'cohen_d')}, efecto {x['magnitud_d']})"
+        for x in top
+    ]
+    if len(piezas_top) > 1:
+        frase_top = ", ".join(piezas_top[:-1]) + " y " + piezas_top[-1]
+    elif piezas_top:
+        frase_top = piezas_top[0]
+    else:
+        frase_top = "ninguna variable numérica calculable"
+
+    # Categóricas de interés para equidad: estrato y género.
+    cat = {x["var"]: x for x in out["categoricas"]}
+    estrato = cat.get("ESTRATO_SOCIAL")
+    genero = cat.get("GENERO")
+
+    # Separador de miles español (punto) para los conteos enteros.
+    def _miles(n) -> str:
+        return f"{int(n):,}".replace(",", ".")
+
+    partes = []
+    partes.append(
+        f"En pregrado ({_miles(meta['n_part'])} participantes frente a {_miles(meta['n_no'])} no "
+        f"participantes, tasa base {_fmt(meta['tasa_base_pct'], 'tasa_base_pct')}%), el "
+        f"análisis prioriza el tamaño del efecto sobre la mera significancia estadística, "
+        f"inevitable con muestras tan grandes."
+    )
+    partes.append(
+        f"Las diferencias de mayor magnitud entre grupos aparecen en {frase_top}; "
+        f"todas favorecen a quienes participan."
+    )
+
+    if estrato is not None and estrato.get("cramers_v") is not None and estrato.get("tabla"):
+        filas = {str(r["categoria"]): r for r in estrato["tabla"]}
+        # Tasas por estrato interpoladas (sin teclear ningún porcentaje).
+        extremos = []
+        if "1" in filas:
+            extremos.append(f"estrato 1 con {_fmt(filas['1']['tasa_pct'], 'tasa_pct')}%")
+        if "6" in filas:
+            extremos.append(f"estrato 6 con {_fmt(filas['6']['tasa_pct'], 'tasa_pct')}%")
+        detalle_estrato = (" (" + " y ".join(extremos) + ")") if extremos else ""
+        partes.append(
+            f"La asociación con el estrato social es de magnitud {estrato['magnitud_v']} "
+            f"(V de Cramér = {_fmt(estrato['cramers_v'], 'cramers_v')}){detalle_estrato}: "
+            f"persiste un gradiente socioeconómico que debe leerse como brecha de equidad, "
+            f"no como criterio de selección."
+        )
+
+    if genero is not None and genero.get("cramers_v") is not None:
+        partes.append(
+            f"La asociación con el género es {genero['magnitud_v']} "
+            f"(V de Cramér = {_fmt(genero['cramers_v'], 'cramers_v')})."
+        )
+
+    partes.append(
+        "Todas las relaciones son asociaciones observadas, no relaciones causales; "
+        "el modelo logístico multivariado se reporta como aproximación "
+        "(sin p-valores analíticos) y complementa, sin sustituir, la lectura univariada."
+    )
+    return " ".join(partes)
+
+
 # ===========================================================================
 # API pública
 # ===========================================================================
@@ -697,4 +792,9 @@ def compute_comparative(df: pd.DataFrame, scope: str = "pregrado") -> dict:
         "logistica": logistica,
     }
     # Saneamiento final: numpy -> nativo, NaN/inf -> None antes de serializar.
-    return _a_nativo(out)
+    out = _a_nativo(out)
+    # Narrativa con cifras interpoladas (M2): fuente única de la prosa para web e
+    # informe. Se construye tras el saneamiento para citar exactamente las cifras
+    # publicadas (mismo redondeo que data.json y las tablas .tex).
+    out["meta"]["resumen_narrativo"] = construir_narrativa(out)
+    return out
