@@ -777,6 +777,94 @@ adicionales, orientadas a la planeación de la Oficina:
     \item[PN5] ¿Los estudiantes completan satisfactoriamente la experiencia?
 \end{description}
 
+\subsection{Decisiones de diseño, accesibilidad y UX}
+Sobre la versión base del tablero se incorporó un conjunto de mejoras de
+usabilidad y accesibilidad, orientadas a reducir la carga cognitiva, acelerar la
+construcción de selecciones y garantizar que la interfaz sea operable por teclado.
+Las decisiones y su justificación se resumen a continuación.
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Acciones ``Seleccionar todo'' / ``Ninguno'' por filtro
+    categórico.} Cada grupo de filtro ofrece dos botones que permiten marcar o
+    desmarcar en bloque sus opciones, evitando el clic repetido cuando una
+    selección es amplia. Por coherencia con el buscador, ``Seleccionar todo'' opera
+    \emph{solo sobre las opciones visibles} ---esto es, las que superan el conteo
+    contextual y, si hay texto de búsqueda, las que coinciden con él---, de modo que
+    el usuario controle con precisión qué se añade. Se implementaron como elementos
+    \texttt{<button>} reales (no \texttt{<span>} con manejador de clic), de forma
+    que sean enfocables y activables por teclado; ``Ninguno'' se deshabilita cuando
+    no hay nada seleccionado.
+    \item \textbf{Buscador automático en filtros con muchas categorías.} En lugar de
+    una lista fija de dimensiones con buscador, este se habilita por una regla de
+    umbral: una dimensión muestra campo de búsqueda cuando su catálogo supera las
+    \textbf{8 opciones}, \emph{salvo} las dimensiones de la lista de exclusión
+    (\texttt{genero}, \texttt{estrato} y \texttt{nivel}). La exclusión es necesaria
+    porque \texttt{nivel} supera el umbral en número de entradas del codebook pero
+    en la práctica tiene pocas opciones relevantes; forzar allí un buscador solo
+    añadiría ruido visual. Con esta regla el buscador aparece en facultad, programa,
+    tipo de admisión y estado, y se omite en género, estrato, nivel y modalidad.
+    \item \textbf{Slider de rango temporal (año de movilidad).} El año de movilidad
+    se filtra con un control de rango de \emph{doble manija} en lugar de una lista de
+    casillas año por año: un rango continuo comunica mejor la intención
+    ``desde--hasta'' y evita decenas de clics para seleccionar un periodo. El control
+    traduce internamente el rango $[\text{desde},\text{hasta}]$ al conjunto de
+    índices del codebook \texttt{anio\_mov} que caen dentro de él, e incluye una
+    casilla ``Incluir sin año/N/A'' para decidir si las observaciones sin año entran
+    en la selección. Cuando el rango cubre todos los años y se incluye N/A, no se
+    aplica filtro (para no sobre-filtrar). El botón global de reinicio limpia también
+    este filtro.
+    \item \textbf{Preguntas de negocio que ahora responden a los filtros.} La
+    \emph{matriz de oportunidad por facultad} y el \emph{mapa de calor
+    facultad~$\times$~estrato} se recalculan en el cliente a partir de la selección
+    activa, de modo que acompañan cualquier combinación de filtros. Para la matriz de
+    oportunidad se descartan las facultades con menos de \textbf{50 estudiantes} en
+    la selección ---para evitar tasas ruidosas de cohortes diminutas---, umbral que se
+    omite cuando la selección total es pequeña (menos de 200 estudiantes) para no
+    vaciar el gráfico; la línea de referencia de ``media'' pasa a ser la \textbf{tasa
+    de la selección}, coherente con que el resto del tablero responde a los filtros.
+    \item \textbf{Vistas que permanecen como histórico global.} Las vistas de
+    \emph{modalidades en el tiempo}, \emph{modalidad por facultad},
+    \emph{estacionalidad} y \emph{resultado de la experiencia} se mantienen como
+    \emph{vista histórica global} y no responden a los filtros, lo que se señala de
+    forma explícita en su subtítulo. La razón es que dependen de datos a nivel de
+    \emph{evento} de movilidad que no forman parte del cubo agregado a nivel de
+    estudiante; recalcularlas desde la selección implicaría exponer o reconstruir
+    microdatos de eventos, en tensión con la minimización de datos y con la
+    coherencia estadística del resto del tablero.
+    \item \textbf{Accesibilidad transversal.} Los controles de rango llevan
+    \texttt{aria-label} descriptivos (``Año desde'' / ``Año hasta'' y los extremos de
+    cada \emph{slider} numérico); las acciones de filtro son botones enfocables y
+    operables por teclado con foco visible (\texttt{:focus-visible}); la paleta se
+    mantiene en azul (\texttt{\#1d4ed8}) y gris (\texttt{\#64748b}) buscando
+    contraste suficiente; cada opción conserva etiquetas claras en español y
+    \emph{tooltips} informativos con el detalle numérico al pasar el cursor.
+    \item \textbf{División en pestañas ``Explorador'' e ``Insights''.} El contenido
+    del tablero se separó en dos pestañas para distinguir lo \emph{interactivo y
+    filtrable} de lo \emph{global y narrativo}. La pestaña \emph{Explorador} reúne
+    todo lo que responde a la selección del usuario: los KPI, la serie temporal, los
+    perfiles de participantes frente a no participantes, las distribuciones
+    numéricas, los \emph{rankings} por categoría y las vistas de \emph{oportunidad} y
+    \emph{equidad} (matriz de oportunidad por facultad y mapa de calor
+    facultad~$\times$~estrato). La pestaña \emph{Insights} agrupa las vistas de
+    histórico global ---modalidades en el tiempo, modalidad por facultad,
+    estacionalidad y resultado de la experiencia--- que no dependen de los filtros.
+    La motivación es triple: separar lo interactivo de lo global, evitar que el
+    usuario espere que las vistas globales reaccionen a los filtros (una fuente de
+    confusión en la versión anterior, donde se señalaba con una coletilla en cada
+    subtítulo) y disponer de un espacio dedicado a presentar los hallazgos
+    principales del proyecto. Como el estado de los filtros se conserva en el
+    componente raíz, alternar de pestaña no pierde la selección; además, en
+    \emph{Insights} el panel de filtros muestra una nota discreta aclarando que los
+    filtros solo aplican al \emph{Explorador}. El patrón de pestañas se implementó de
+    forma accesible: un contenedor \texttt{role=tablist}, cada pestaña como
+    \texttt{<button role=tab>} con \texttt{aria-selected} y \texttt{aria-controls}
+    apuntando a su panel, y cada panel con \texttt{role=tabpanel} y
+    \texttt{aria-labelledby} apuntando a su pestaña. La pestaña activa se distingue
+    visualmente con borde inferior y color azul (\texttt{\#1d4ed8}); la navegación por
+    teclado permite enfocar y activar con \texttt{Tab} y \texttt{Enter}/\texttt{Espacio}
+    y desplazarse entre pestañas con las flechas izquierda/derecha.
+\end{itemize}
+
 \subsection{Reproducibilidad del dashboard}
 El tablero se regenera de forma reproducible: \texttt{python -m src.export\_dashboard}
 reconstruye el cubo a partir del dataset analítico, y \texttt{npm run build} dentro

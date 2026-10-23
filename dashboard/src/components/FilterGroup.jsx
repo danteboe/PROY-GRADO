@@ -7,7 +7,7 @@ import { fmtInt, orderedCategories } from '../data.js'
 // activos (conteo contextual). El total de estudiantes se muestra como título
 // (tooltip) de cada opción.
 export default function FilterGroup({
-  dim, label, codebooks, counts, selected, onToggle, onClear, searchable = false,
+  dim, label, codebooks, counts, selected, onToggle, onClear, onSelectAll, searchable = false,
 }) {
   const [q, setQ] = useState('')
   const cats = codebooks[dim]
@@ -42,6 +42,27 @@ export default function FilterGroup({
           onChange={(e) => setQ(e.target.value)}
         />
       )}
+      <div className="filter-actions">
+        {/* Selecciona solo los items visibles (tras filtro de texto y con part>0). */}
+        <button
+          type="button"
+          className="filter-action-btn"
+          onClick={() => onSelectAll(dim, items.map((it) => it.idx))}
+          disabled={items.length === 0}
+          aria-label={`Seleccionar todas las opciones visibles de ${label}`}
+        >
+          Seleccionar todo
+        </button>
+        <button
+          type="button"
+          className="filter-action-btn"
+          onClick={() => onClear(dim)}
+          disabled={selected.size === 0}
+          aria-label={`Quitar filtro de ${label} (equivale a mostrar todas las opciones)`}
+        >
+          Quitar filtro
+        </button>
+      </div>
       <div className="options">
         {items.map((it) => (
           <label

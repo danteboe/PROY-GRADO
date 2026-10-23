@@ -163,6 +163,69 @@ export function aggregateByNumeric(rows, dim, numMeta, naSentinel = -1) {
   return out.sort((a, b) => a.value - b.value)
 }
 
+// Recalcula en cliente la "matriz de oportunidad" por facultad a partir de filas
+// ya filtradas -> [{ facultad, n, part, noPart, tasa }].
+// Umbral de volumen: se descartan facultades con menos de `minN` estudiantes para
+// evitar tasas ruidosas de cohortes diminutas. Excepción: si la selección total es
+// pequeña (`n` total < 200), se omite el umbral para no vaciar el gráfico.
+export function aggregateOportunidad(rows, codebooks, { minN = 50 } = {}) {
+  const facs = codebooks.facultad
+  const map = new Map()
+  let totalN = 0
+  for (const r of rows) {
+    const k = r.facultad
+    const cur = map.get(k) || { n: 0, part: 0 }
+    cur.n += r.n
+    cur.part += r.part
+    map.set(k, cur)
+    totalN += r.n
+  }
+  const aplicarUmbral = totalN >= 200
+  const out = []
+  for (const [k, v] of map.entries()) {
+    if (aplicarUmbral && v.n < minN) continue
+    out.push({
+      facultad: facs[k],
+      n: v.n,
+      part: v.part,
+      noPart: v.n - v.part,
+      tasa: v.n ? (100 * v.part) / v.n : 0,
+    })
+  }
+  return out.sort((a, b) => b.n - a.n)
+}
+
+// Recalcula en cliente el mapa de calor facultad x estrato (solo pregrado) a partir
+// de filas ya filtradas -> [{ facultad, estrato, n, part, tasa }].
+// `estrato` se emite como label string para casar con el eje interno de Heatmap.
+// Si el codebook de nivel no contiene "Pregrado", no se filtra por nivel (fallback).
+export function aggregateHeatmap(rows, codebooks, naSentinel = -1) {
+  const facs = codebooks.facultad
+  const estratos = codebooks.estrato
+  const idxPregrado = codebooks.nivel.indexOf('Pregrado')
+  const map = new Map()
+  for (const r of rows) {
+    if (idxPregrado >= 0 && r.nivel !== idxPregrado) continue
+    if (r.estrato === naSentinel) continue
+    const key = `${r.facultad}|${r.estrato}`
+    const cur = map.get(key) || { facIdx: r.facultad, estIdx: r.estrato, n: 0, part: 0 }
+    cur.n += r.n
+    cur.part += r.part
+    map.set(key, cur)
+  }
+  const out = []
+  for (const v of map.values()) {
+    out.push({
+      facultad: facs[v.facIdx],
+      estrato: estratos[v.estIdx],
+      n: v.n,
+      part: v.part,
+      tasa: v.n ? (100 * v.part) / v.n : 0,
+    })
+  }
+  return out
+}
+
 export function fmtReal(x, meta) {
   const s = x.toFixed(meta.dec)
   return meta.unit ? `${s} ${meta.unit}` : s

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import {
   loadCube, applyFilters, totals, aggregateBy, aggregateByNumeric,
+  aggregateOportunidad, aggregateHeatmap,
   fmtInt, fmtPct, DIM_LABELS,
 } from './data.js'
 import FilterGroup from './components/FilterGroup.jsx'
 import RangeSlider from './components/RangeSlider.jsx'
+import YearRangeSlider from './components/YearRangeSlider.jsx'
 import BarRanking from './components/BarRanking.jsx'
 import TemporalLine from './components/TemporalLine.jsx'
 import ModalityArea from './components/ModalityArea.jsx'
@@ -22,13 +24,22 @@ const CAT_FILTER_DIMS = [
   'nivel', 'facultad', 'programa', 'genero', 'estrato',
   'tipo_admision', 'estado', 'modalidad',
 ]
-const SEARCHABLE = new Set(['programa', 'tipo_admision', 'estado'])
+// El buscador se habilita cuando una dimensión tiene más de UMBRAL_BUSQUEDA
+// opciones, SALVO las dimensiones de SIN_BUSQUEDA (que tienen prioridad). `nivel`
+// supera el umbral (10 entradas en el codebook) pero en la práctica tiene pocas
+// opciones reales, así que se excluye explícitamente para no añadir ruido visual.
+const UMBRAL_BUSQUEDA = 8
+const SIN_BUSQUEDA = new Set(['genero', 'nivel', 'estrato'])
 
 export default function App() {
   const [cube, setCube] = useState(null)
   const [error, setError] = useState(null)
   // filters = { cat: { dim: Set }, num: { dim: {min,max,includeNA,active} } }
   const [filters, setFilters] = useState({ cat: {}, num: {} })
+  // Pestaña activa del tablero: 'explorador' (filtrable) o 'insights' (global).
+  // El estado se eleva a App para que Sidebar pueda mostrar la nota contextual
+  // y para que `filters` no se pierda al alternar de pestaña.
+  const [tab, setTab] = useState('explorador')
 
   useEffect(() => {
     loadCube().then(setCube).catch((e) => setError(e.message))
@@ -43,6 +54,16 @@ export default function App() {
   }, [])
   const clearCat = useCallback((dim) => {
     setFilters((prev) => ({ ...prev, cat: { ...prev.cat, [dim]: new Set() } }))
+  }, [])
+  const selectAllCat = useCallback((dim, indices) => {
+    setFilters((prev) => {
+      const set = new Set(prev.cat[dim] || [])
+      for (const i of indices) set.add(i)
+      return { ...prev, cat: { ...prev.cat, [dim]: set } }
+    })
+  }, [])
+  const setCatSet = useCallback((dim, set) => {
+    setFilters((prev) => ({ ...prev, cat: { ...prev.cat, [dim]: set } }))
   }, [])
   const setNum = useCallback((dim, range) => {
     setFilters((prev) => ({ ...prev, num: { ...prev.num, [dim]: range } }))
@@ -65,15 +86,20 @@ export default function App() {
     <div className="app">
       <Sidebar
         cube={cube} filters={filters}
-        toggleCat={toggleCat} clearCat={clearCat} setNum={setNum} clearNum={clearNum}
-        resetAll={resetAll} activeCount={activeCount}
+        toggleCat={toggleCat} clearCat={clearCat} selectAllCat={selectAllCat}
+        setCatSet={setCatSet} setNum={setNum} clearNum={clearNum}
+        resetAll={resetAll} activeCount={activeCount} tab={tab}
       />
-      <Dashboard cube={cube} filters={filters} toggleCat={toggleCat} />
+      <Dashboard cube={cube} filters={filters} toggleCat={toggleCat} tab={tab} setTab={setTab} />
     </div>
   )
 }
 
-function Sidebar({ cube, filters, toggleCat, clearCat, setNum, clearNum, resetAll, activeCount }) {
+function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, setNum, clearNum, resetAll, activeCount, tab }) {
+  // El buscador se muestra si la dimensión supera el umbral de opciones y no está
+  // en la lista de exclusión (ver UMBRAL_BUSQUEDA / SIN_BUSQUEDA).
+  const esBuscable = (dim) =>
+    !SIN_BUSQUEDA.has(dim) && cube.codebooks[dim].length > UMBRAL_BUSQUEDA
   // Conteo contextual por dimensión categórica: cuenta aplicando los DEMÁS
   // filtros. Guarda {n, part}; el filtro muestra `part` (participantes).
   const countsByDim = useMemo(() => {
@@ -103,6 +129,13 @@ function Sidebar({ cube, filters, toggleCat, clearCat, setNum, clearNum, resetAl
         de internacionalización.
       </div>
 
+      {tab === 'insights' && (
+        <div className="sidebar-note">
+          Los filtros aplican a la pestaña <strong>Explorador</strong>. La pestaña Insights
+          muestra hallazgos globales del histórico completo.
+        </div>
+      )}
+
       {CAT_FILTER_DIMS.map((dim) => (
         <FilterGroup
           key={dim}
@@ -113,9 +146,19 @@ function Sidebar({ cube, filters, toggleCat, clearCat, setNum, clearNum, resetAl
           selected={filters.cat[dim] || new Set()}
           onToggle={toggleCat}
           onClear={clearCat}
-          searchable={SEARCHABLE.has(dim)}
+          onSelectAll={selectAllCat}
+          searchable={esBuscable(dim)}
         />
       ))}
+
+      <div className="sidebar-section">Rango temporal (año de movilidad)</div>
+      <YearRangeSlider
+        label={DIM_LABELS.anio_mov}
+        codebook={cube.codebooks.anio_mov}
+        selected={filters.cat.anio_mov || new Set()}
+        onChange={(set) => setCatSet('anio_mov', set)}
+        onClear={() => clearCat('anio_mov')}
+      />
 
       <div className="sidebar-section">Variables numéricas</div>
       {cube.numDims.map((dim) => (
@@ -132,7 +175,16 @@ function Sidebar({ cube, filters, toggleCat, clearCat, setNum, clearNum, resetAl
   )
 }
 
-function Dashboard({ cube, filters, toggleCat }) {
+function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
+  // Navegación por teclado entre pestañas (flechas izquierda/derecha).
+  const onTabKeyDown = (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+    e.preventDefault()
+    const next = tab === 'explorador' ? 'insights' : 'explorador'
+    setTab(next)
+    const el = document.getElementById(`tab-${next}`)
+    if (el) el.focus()
+  }
   const filtered = useMemo(
     () => applyFilters(cube.rows, filters, null, cube.naSentinel),
     [cube, filters],
@@ -186,8 +238,19 @@ function Dashboard({ cube, filters, toggleCat }) {
     return out
   }, [cube, modalities])
 
-  // ---- Vistas de preguntas de negocio (globales, del cubo) ----
-  const avgRate = base.tasa
+  // ---- Preguntas de negocio recalculadas en cliente desde la selección ----
+  // Matriz de oportunidad por facultad (n, part, noPart, tasa) y mapa de calor
+  // facultad x estrato en pregrado, ambos derivados de `filtered`.
+  const oportunidadSel = useMemo(
+    () => aggregateOportunidad(filtered, cube.codebooks),
+    [filtered, cube],
+  )
+  const heatmapSel = useMemo(
+    () => aggregateHeatmap(filtered, cube.codebooks, cube.naSentinel),
+    [filtered, cube],
+  )
+
+  // ---- Vistas históricas globales (dependen de datos a nivel de evento) ----
   const modFacData = useMemo(() => {
     // modalidad x facultad -> [{facultad, <mod>:n, ...}] con todas las modalidades
     const byFac = new Map()
@@ -245,6 +308,31 @@ function Dashboard({ cube, filters, toggleCat }) {
 
   return (
     <main className="main">
+      <div className="tabs" role="tablist" aria-label="Vistas del tablero">
+        <button
+          type="button" role="tab" id="tab-explorador"
+          className={tab === 'explorador' ? 'tab active' : 'tab'}
+          aria-selected={tab === 'explorador'} aria-controls="panel-explorador"
+          tabIndex={tab === 'explorador' ? 0 : -1}
+          onClick={() => setTab('explorador')} onKeyDown={onTabKeyDown}
+        >
+          Explorador
+        </button>
+        <button
+          type="button" role="tab" id="tab-insights"
+          className={tab === 'insights' ? 'tab active' : 'tab'}
+          aria-selected={tab === 'insights'} aria-controls="panel-insights"
+          tabIndex={tab === 'insights' ? 0 : -1}
+          onClick={() => setTab('insights')} onKeyDown={onTabKeyDown}
+        >
+          Insights
+        </button>
+      </div>
+
+      <section
+        id="panel-explorador" role="tabpanel" aria-labelledby="tab-explorador"
+        className="tabpanel" hidden={tab !== 'explorador'}
+      >
       <div className="main-head">
         <h2>Explorador de participación estudiantil en internacionalización</h2>
         <p>
@@ -253,7 +341,8 @@ function Dashboard({ cube, filters, toggleCat }) {
           entrada manual en cada extremo). Todos los indicadores y gráficos se recalculan
           en vivo. Las barras muestran su valor directamente; cada gráfico de ranking indica
           el <strong>Total</strong>. Haz clic en una barra de facultad o programa para
-          filtrar por ella.
+          filtrar por ella. Las vistas globales del histórico están en la pestaña
+          <strong> Insights</strong>.
         </p>
       </div>
 
@@ -371,33 +460,62 @@ function Dashboard({ cube, filters, toggleCat }) {
         />
       </div>
 
+      {/* Oportunidad y equidad, recalculadas desde la selección activa */}
+      <div className="section-title">Oportunidad y equidad (según la selección)</div>
+      <OpportunityScatter
+        title="¿Dónde está el mayor potencial de crecimiento? (por facultad)"
+        subtitle="Según la selección. Volumen de estudiantes vs. tasa de participación; tamaño = estudiantes que aún no participan. Se omiten facultades con menos de 50 estudiantes salvo que la selección total sea pequeña. La línea de media es la tasa de la selección."
+        data={oportunidadSel}
+        avgRate={t.tasa}
+      />
+      <Heatmap
+        title="Brecha socioeconómica dentro de cada facultad"
+        subtitle="Según la selección. Tasa de participación (%) por facultad y estrato, en pregrado."
+        data={heatmapSel}
+      />
+
+      <p className="footnote">
+        Fuente: registros académicos anonimizados de la Universidad de los Andes. La señal de
+        internacionalización se deriva de cursos de movilidad en la historia académica. Los datos
+        se presentan agregados; no se exponen registros individuales (principio de minimización de
+        datos, Ley 1581 de 2012). Las asociaciones mostradas no implican causalidad.
+      </p>
+      </section>
+
+      <section
+        id="panel-insights" role="tabpanel" aria-labelledby="tab-insights"
+        className="tabpanel" hidden={tab !== 'insights'}
+      >
+      <div className="main-head">
+        <h2>Insights: hallazgos del histórico completo</h2>
+        <p>
+          Estas vistas son <strong>agregados del histórico completo</strong> de eventos de
+          movilidad y <strong>no se ven afectadas por los filtros</strong> del Explorador.
+          Resumen los hallazgos principales del proyecto.
+        </p>
+      </div>
+
       <div className="section-title">Modalidades en el tiempo</div>
       <ModalityArea
         title="Composición de modalidades por año"
-        subtitle="Eventos por modalidad desde 2010 (vista histórica global)."
+        subtitle="Eventos por modalidad desde 2010."
         data={modalidadTemporal}
         modalities={modalities}
       />
 
-      {/* Preguntas de negocio (vistas históricas globales) */}
-      <div className="section-title">Preguntas de negocio</div>
-      <OpportunityScatter
-        title="¿Dónde está el mayor potencial de crecimiento? (por facultad)"
-        subtitle="Volumen de estudiantes vs. tasa de participación. Tamaño = estudiantes que aún no participan."
-        data={cube.oportunidad}
-        avgRate={avgRate}
-      />
-      <Heatmap
-        title="Brecha socioeconómica dentro de cada facultad"
-        subtitle="Tasa de participación (%) por facultad y estrato, en pregrado."
-        data={cube.heatmapFacEstrato}
-      />
+      <div className="section-title">
+        ¿Qué modalidad prefiere cada facultad?
+      </div>
       <StackedByFaculty
         title="¿Qué modalidad prefiere cada facultad?"
         subtitle="Composición (%) de los eventos de movilidad por facultad."
         data={modFacData}
         modalities={modalities}
       />
+
+      <div className="section-title">
+        Estacionalidad y resultado de la experiencia
+      </div>
       <div className="grid">
         <SeasonBars
           title="Estacionalidad: ¿en qué semestre se sale más?"
@@ -406,13 +524,7 @@ function Dashboard({ cube, filters, toggleCat }) {
         />
         <DonutResultado resultado={cube.resultadoMov} />
       </div>
-
-      <p className="footnote">
-        Fuente: registros académicos anonimizados de la Universidad de los Andes. La señal de
-        internacionalización se deriva de cursos de movilidad en la historia académica. Los datos
-        se presentan agregados; no se exponen registros individuales (principio de minimización de
-        datos, Ley 1581 de 2012). Las asociaciones mostradas no implican causalidad.
-      </p>
+      </section>
     </main>
   )
 }

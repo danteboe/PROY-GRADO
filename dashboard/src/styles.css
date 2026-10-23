@@ -113,8 +113,62 @@ body {
   font-size: 12px;
 }
 
+/* ---------- Acciones por grupo de filtro (Seleccionar todo / Ninguno) ---------- */
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.filter-action-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+.filter-action-btn:hover:not(:disabled) { text-decoration: underline; }
+.filter-action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.filter-action-btn:disabled { color: var(--muted); cursor: default; }
+
 /* ---------- Main ---------- */
 .main { padding: 20px 24px 48px; overflow-x: hidden; }
+
+/* ---------- Pestañas (Explorador / Insights) ---------- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+.tab {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink); }
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tabpanel[hidden] { display: none; }
 
 .main-head { margin-bottom: 16px; }
 .main-head h2 { margin: 0 0 4px; font-size: 20px; }
@@ -291,6 +345,18 @@ body {
 }
 .na-toggle input { accent-color: var(--accent); }
 
+/* ---------- Slider de rango temporal (año de movilidad) ---------- */
+.year-slider { margin-bottom: 4px; }
+.year-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+.year-range-labels strong { color: var(--ink); }
+
 /* ---------- Total badge y subtítulo de tarjeta ---------- */
 .card-sub-row {
   display: flex;
@@ -320,6 +386,21 @@ body {
   margin: 24px 0 12px;
   padding-bottom: 6px;
   border-bottom: 2px solid var(--accent-soft);
+}
+
+/* ---------- Badge de vista histórica global (no filtrable) ---------- */
+.badge-historico {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-right: 6px;
+  vertical-align: middle;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .donut-center-note {
