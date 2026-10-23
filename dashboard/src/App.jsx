@@ -19,6 +19,10 @@ import Heatmap from './components/Heatmap.jsx'
 import StackedByFaculty from './components/StackedByFaculty.jsx'
 import SeasonBars from './components/SeasonBars.jsx'
 import Kpi from './components/Kpi.jsx'
+import CohenDChart from './components/CohenDChart.jsx'
+import ComparativeBoxplots from './components/ComparativeBoxplots.jsx'
+import CategoricalAssociation from './components/CategoricalAssociation.jsx'
+import LogisticOddsRatios from './components/LogisticOddsRatios.jsx'
 
 const CAT_FILTER_DIMS = [
   'nivel', 'facultad', 'programa', 'genero', 'estrato',
@@ -240,7 +244,8 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
 
   // ---- Preguntas de negocio recalculadas en cliente desde la selección ----
   // Matriz de oportunidad por facultad (n, part, noPart, tasa) y mapa de calor
-  // facultad x estrato en pregrado, ambos derivados de `filtered`.
+  // facultad x estrato, ambos derivados de `filtered` (respetan todos los filtros,
+  // incluido el de nivel académico).
   const oportunidadSel = useMemo(
     () => aggregateOportunidad(filtered, cube.codebooks),
     [filtered, cube],
@@ -470,7 +475,7 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       />
       <Heatmap
         title="Brecha socioeconómica dentro de cada facultad"
-        subtitle="Según la selección. Tasa de participación (%) por facultad y estrato, en pregrado."
+        subtitle="Tasa de participación (%) por facultad y estrato, según la selección actual (incluye el filtro de nivel académico)."
         data={heatmapSel}
       />
 
@@ -494,6 +499,13 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
           Resumen los hallazgos principales del proyecto.
         </p>
       </div>
+
+      {/* Bloque comparativo participantes vs. no participantes (pregrado). Lee
+          valores precalculados de cube.comparativo; es independiente de los
+          filtros, igual que el resto de la pestaña Insights. */}
+      <ComparativoInsights comparativo={cube.comparativo} />
+
+      <div className="section-title">Panorama histórico de la movilidad</div>
 
       <div className="section-title">Modalidades en el tiempo</div>
       <ModalityArea
@@ -526,6 +538,51 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       </div>
       </section>
     </main>
+  )
+}
+
+// Bloque de Insights que responde "¿qué diferencia a quienes participan?" para
+// pregrado. Reúne el resumen narrativo precalculado, el gráfico de d de Cohen, los
+// boxplots comparativos, las tasas por categoría (con V de Cramér) y, cuando está
+// disponible, el forest-plot de la regresión logística. Si `comparativo` es null,
+// muestra un placeholder sin romper el resto de la pestaña.
+function ComparativoInsights({ comparativo }) {
+  if (!comparativo) {
+    return (
+      <>
+        <div className="section-title">
+          ¿Qué diferencia a quienes participan? (pregrado)
+        </div>
+        <div className="card wide"><p className="card-sub" style={{ margin: 0 }}>Sin datos comparativos.</p></div>
+      </>
+    )
+  }
+
+  const meta = comparativo.meta || {}
+  // El resumen narrativo es prosa en español sin lenguaje causal, interpolada en
+  // Python desde las mismas cifras del contrato. Si faltara, se degrada a un
+  // párrafo neutral sin números.
+  const narrativa = meta.resumen_narrativo ||
+    'En pregrado se comparan participantes y no participantes de internacionalización ' +
+    'sobre variables académicas, demográficas y socioeconómicas. Las diferencias se ' +
+    'reportan como asociaciones, no como relaciones de causa a efecto.'
+
+  return (
+    <>
+      <div className="section-title">
+        ¿Qué diferencia a quienes participan? (pregrado)
+      </div>
+      <div className="card wide">
+        <p className="card-sub" style={{ margin: 0, lineHeight: 1.55 }}>{narrativa}</p>
+      </div>
+      <CohenDChart data={comparativo.numericas} />
+      <ComparativeBoxplots data={comparativo.numericas} />
+      <CategoricalAssociation
+        data={comparativo.categoricas}
+        tasaBase={meta.tasa_base_pct}
+      />
+      <LogisticOddsRatios data={comparativo.logistica} />
+    </>
   )
 }
 

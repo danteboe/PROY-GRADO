@@ -59,6 +59,10 @@ export async function loadCube() {
     estacionalidad: raw.estacionalidad || [],
     estacionalidadTotal: raw.estacionalidad_total || [],
     resultadoMov: raw.resultado_mov || [],
+    // Bloque comparativo participantes vs. no participantes (pregrado). Es un
+    // objeto {meta, numericas, categoricas, logistica} precalculado en Python
+    // (src/comparative_stats.py); los componentes de Insights solo LEEN de aquí.
+    comparativo: raw.comparativo || null,
   }
 }
 
@@ -195,17 +199,22 @@ export function aggregateOportunidad(rows, codebooks, { minN = 50 } = {}) {
   return out.sort((a, b) => b.n - a.n)
 }
 
-// Recalcula en cliente el mapa de calor facultad x estrato (solo pregrado) a partir
-// de filas ya filtradas -> [{ facultad, estrato, n, part, tasa }].
-// `estrato` se emite como label string para casar con el eje interno de Heatmap.
-// Si el codebook de nivel no contiene "Pregrado", no se filtra por nivel (fallback).
+// Recalcula en cliente el mapa de calor facultad x estrato a partir de filas ya
+// filtradas -> [{ facultad, estrato, n, part, tasa }].
+// El heatmap RESPETA todos los filtros del sidebar (incluido `nivel`): agrega sobre
+// exactamente las filas de `filtered` que recibe, sin recortar a pregrado ni a
+// ningún nivel por su cuenta. Así, cambiar el filtro de nivel (p. ej. "todo menos
+// maestría") sí altera el resultado.
+// `estrato` se emite como label string (`codebooks.estrato`, que es
+// ['1'..'6','Sin dato']) para casar con el eje fijo de Heatmap. La columna "Sin
+// dato" es un índice legítimo del codebook (índice 6), NO el naSentinel numérico:
+// esas filas deben caer en la columna 'Sin dato', no excluirse. Solo se descarta
+// `estrato === naSentinel`, reservado para NA numérico genuino.
 export function aggregateHeatmap(rows, codebooks, naSentinel = -1) {
   const facs = codebooks.facultad
   const estratos = codebooks.estrato
-  const idxPregrado = codebooks.nivel.indexOf('Pregrado')
   const map = new Map()
   for (const r of rows) {
-    if (idxPregrado >= 0 && r.nivel !== idxPregrado) continue
     if (r.estrato === naSentinel) continue
     const key = `${r.facultad}|${r.estrato}`
     const cur = map.get(key) || { facIdx: r.facultad, estIdx: r.estrato, n: 0, part: 0 }
