@@ -37,7 +37,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from . import config, utils
+from . import comparative_stats, config, utils
 
 KEY = config.STUDENT_KEY
 
@@ -62,15 +62,12 @@ NUM_DIMS = {
 
 
 def _faculty_name_map() -> dict:
-    """Mapa de código de facultad -> nombre legible (desde `programas`)."""
-    pg = utils.load_source(
-        "programas",
-        columns=["CODIGO_FACULTAD_PROGRAMA_1", "DESCRIPCION_FACULTAD_PROGRAMA_1"],
-        fix_encoding=True,
-    )
-    pg = pg.dropna().drop_duplicates("CODIGO_FACULTAD_PROGRAMA_1")
-    m = pg.set_index("CODIGO_FACULTAD_PROGRAMA_1")["DESCRIPCION_FACULTAD_PROGRAMA_1"].to_dict()
-    return {k: str(v).title() for k, v in m.items()}
+    """Mapa de código de facultad -> nombre legible (desde `programas`).
+
+    Delega en `comparative_stats.faculty_name_map()` para no duplicar la lógica
+    (fuente única; RF-5).
+    """
+    return comparative_stats.faculty_name_map()
 
 
 def _discretize_pga(s: pd.Series) -> pd.Series:
@@ -234,6 +231,9 @@ def build_cube(verbose: bool = True) -> dict:
         "estacionalidad_total": estacionalidad_total,
         "resultado_mov": resultado_mov,
     }
+
+    # Análisis comparativo inferencial (fuente única; alcance pregrado, RF-1/RF-2).
+    out["comparativo"] = comparative_stats.compute_comparative(df, "pregrado")
 
     if verbose:
         print(f"Celdas del cubo: {len(rows):,} | "
