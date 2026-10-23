@@ -1,0 +1,7 @@
+{
+  "task_id": "task-comparativo-insights",
+  "task_description": "Análisis estadístico comparativo participantes vs. no participantes en internacionalización (foco pregrado), consistente y numéricamente idéntico en tres entregables: (A) módulo único src/comparative_stats.py + sección `comparativo` en dashboard/public/data.json; (C) figuras PNG + tablas CSV/.tex generadas por el MISMO cálculo vía notebook 06 y nueva sección técnica en latex/informe_proyecto.tex; (B) componentes React (boxplots, d de Cohen, tasas con V de Cramér, resumen narrativo) y reorganización de la pestaña Insights. Incorpora M1 (consistencia web<->informe sobre los .tex renderizados) y M2 (cero cifras a mano en el .tex).",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
