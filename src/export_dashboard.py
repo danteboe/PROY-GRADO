@@ -37,7 +37,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from . import comparative_stats, config, historical_stats, utils
+from . import comparative_stats, config, historical_rates, historical_stats, utils
 
 KEY = config.STUDENT_KEY
 
@@ -238,6 +238,15 @@ def build_cube(verbose: bool = True) -> dict:
     # Evolución temporal (histórico): composición de participantes por año (fuente
     # única; mismo patrón que el comparativo, RF-1/RF-2).
     out["historico"] = historical_stats.compute_historical(df)
+
+    # Tasa de inicio de movilidad por año y grupo (fuente única; clave hermana de
+    # 'historico'). Requiere historial_rendimiento (clave + periodo); si la fuente
+    # falta o es ilegible, load_source lanza y el exportador falla de forma visible
+    # (no se emite un data.json parcial).
+    rend = utils.load_source(
+        "historial_rendimiento", columns=["CODIGO_ESTUDIANTE", "PERIODO"]
+    )
+    out["historico_tasas"] = historical_rates.compute_historical_rates(df, rend)
 
     if verbose:
         print(f"Celdas del cubo: {len(rows):,} | "
