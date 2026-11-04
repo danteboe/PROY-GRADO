@@ -68,6 +68,12 @@ export async function loadCube() {
     // (PGA/ICFES/avance). Precalculado en Python (src/historical_stats.py); los
     // componentes solo LEEN de aquí. No es tasa de participación.
     historico: raw.historico || null,
+    // Bloque histórico de TASAS: a diferencia de `historico` (composición), esto
+    // SÍ es una tasa (tasa de inicio de movilidad por grupo y año = activos que
+    // iniciaron movilidad ese año / activos del grupo ese año). Eje distinto del
+    // histórico de composición. Precalculado en Python (src/historical_rates.py);
+    // los componentes solo LEEN de aquí.
+    historicoTasas: raw.historico_tasas || null,
   }
 }
 

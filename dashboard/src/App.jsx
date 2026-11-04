@@ -18,6 +18,7 @@ import OpportunityScatter from './components/OpportunityScatter.jsx'
 import Heatmap from './components/Heatmap.jsx'
 import StackedByFaculty from './components/StackedByFaculty.jsx'
 import HistoricalComposition from './components/HistoricalComposition.jsx'
+import HistoricalRates from './components/HistoricalRates.jsx'
 import TemporalMean from './components/TemporalMean.jsx'
 import SeasonBars from './components/SeasonBars.jsx'
 import Kpi from './components/Kpi.jsx'
@@ -36,6 +37,17 @@ const CAT_FILTER_DIMS = [
 // opciones reales, así que se excluye explícitamente para no añadir ruido visual.
 const UMBRAL_BUSQUEDA = 8
 const SIN_BUSQUEDA = new Set(['genero', 'nivel', 'estrato'])
+
+// Dimensiones de la tarjeta unificada de composición histórica (CAMBIO 1): una
+// sola tarjeta con <select> que conmuta entre estrato/género/facultad/modalidad,
+// reutilizando las series de cube.historico. `serie` es la clave dentro de
+// cube.historico y `campo` la columna de categoría dentro de esa serie.
+const DIMENSIONES_COMPOSICION = [
+  { key: 'estrato', label: 'Estrato social', serie: 'composicion_estrato', campo: 'estrato' },
+  { key: 'genero', label: 'Género', serie: 'composicion_genero', campo: 'genero' },
+  { key: 'facultad', label: 'Facultad', serie: 'composicion_facultad', campo: 'facultad' },
+  { key: 'modalidad', label: 'Modalidad', serie: 'composicion_modalidad', campo: 'modalidad' },
+]
 
 export default function App() {
   const [cube, setCube] = useState(null)
@@ -182,10 +194,8 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
 }
 
 function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
-  // Toggles "Histórico" de las tarjetas de Insights: conmutan entre la vista
-  // agregada actual y su evolución (composición de participantes por año).
-  const [histFac, setHistFac] = useState(false)
-  const [histMod, setHistMod] = useState(false)
+  // Dimensión activa de la tarjeta unificada de composición histórica (CAMBIO 1).
+  const [dimComp, setDimComp] = useState('estrato')
   // Navegación por teclado entre pestañas (flechas izquierda/derecha).
   const onTabKeyDown = (e) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
@@ -316,21 +326,13 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
     return { rows, categories }
   }
 
-  const histEstrato = useMemo(
-    () => pivotComposicion(cube.historico?.composicion_estrato, 'estrato'),
-    [cube],
-  )
-  const histGenero = useMemo(
-    () => pivotComposicion(cube.historico?.composicion_genero, 'genero'),
-    [cube],
-  )
-  const histFacultad = useMemo(
-    () => pivotComposicion(cube.historico?.composicion_facultad, 'facultad'),
-    [cube],
-  )
-  const histModalidad = useMemo(
-    () => pivotComposicion(cube.historico?.composicion_modalidad, 'modalidad'),
-    [cube],
+  // Tarjeta unificada de composición (CAMBIO 1): una sola serie derivada de la
+  // dimensión activa del <select>, pivoteada con el pivotComposicion EXISTENTE.
+  const dimCompActiva = DIMENSIONES_COMPOSICION.find((d) => d.key === dimComp)
+    || DIMENSIONES_COMPOSICION[0]
+  const histComp = useMemo(
+    () => pivotComposicion(cube.historico?.[dimCompActiva.serie], dimCompActiva.campo),
+    [cube, dimComp],
   )
   const histNumerico = cube.historico?.resumen_numerico || null
   const tieneHistorico = cube.historico != null
@@ -566,18 +568,29 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       {tieneHistorico ? (
         <>
           <HistoricalComposition
-            title="Composición de los participantes por estrato social y año — no es tasa de participación"
-            subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción pertenece a cada estrato. Composición de la cohorte de participantes, no proporción de participación por grupo. Excluye 'Sin dato' y cada año renormaliza a 100%."
-            data={histEstrato.rows}
-            categories={histEstrato.categories}
-            note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
-          />
-          <HistoricalComposition
-            title="Composición de los participantes por género y año — no es tasa de participación"
-            subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción corresponde a cada género. Composición de la cohorte de participantes, no proporción de participación por grupo. Excluye 'Sin dato' y cada año renormaliza a 100%."
-            data={histGenero.rows}
-            categories={histGenero.categories}
-            note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
+            title="Composición de los participantes por año — no es proporción de participación"
+            subtitle={
+              `De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción corresponde a cada categoría de ${dimCompActiva.label.toLowerCase()}. Composición de la cohorte de participantes, no proporción de participación por grupo.` +
+              (dimCompActiva.key === 'modalidad'
+                ? ''
+                : " Excluye 'Sin dato' y cada año renormaliza a 100%.")
+            }
+            data={histComp.rows}
+            categories={histComp.categories}
+            note="Composición de los participantes de cada año (no es proporción de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
+            toggle={
+              <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
+                <select
+                  className="toggle-btn"
+                  value={dimComp} onChange={(e) => setDimComp(e.target.value)}
+                  aria-label="Seleccionar dimensión de composición"
+                >
+                  {DIMENSIONES_COMPOSICION.map((d) => (
+                    <option key={d.key} value={d.key}>{d.label}</option>
+                  ))}
+                </select>
+              </label>
+            }
           />
           <TemporalMean
             title="Perfil académico medio de los participantes por año — no es tasa de participación"
@@ -594,81 +607,40 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
         </div>
       )}
 
+      {/* Tasa de inicio de movilidad por grupo y año (CAMBIO 2): SÍ es una tasa
+          (eje distinto del histórico de composición). Lee cube.historicoTasas,
+          precalculado en Python (src/historical_rates.py). */}
+      <div className="section-title">Participación relativa en el tiempo (tasa de inicio por año)</div>
+      {cube.historicoTasas ? (
+        <HistoricalRates rates={cube.historicoTasas} />
+      ) : (
+        <div className="card wide">
+          <p className="card-sub">
+            Sin datos de tasas. Ejecuta <code>python -m src.export_dashboard</code> para regenerar
+            data.json con la clave <code>historico_tasas</code>.
+          </p>
+        </div>
+      )}
+
       <div className="section-title">Panorama histórico de la movilidad</div>
 
       <div className="section-title">Modalidades en el tiempo</div>
-      {histMod && tieneHistorico ? (
-        <HistoricalComposition
-          title="Composición de modalidades de los participantes por año"
-          subtitle="Composición (%) de modalidad de los participantes por año de su primer evento de movilidad (desde 2012). Ojo: esta vista es de participantes-primer-año, no del conteo de eventos de la vista base."
-          data={histModalidad.rows}
-          categories={histModalidad.categories}
-          note="Al activar 'Histórico' cambia la población (de eventos a participantes por año de su primer evento, >=2012) y el rango respecto a la vista base. No es tasa de participación."
-          toggle={
-            <button
-              type="button" className="toggle-btn active"
-              aria-pressed={true} aria-label="Histórico de modalidades: activado"
-              onClick={() => setHistMod(false)}
-            >
-              Histórico
-            </button>
-          }
-        />
-      ) : (
-        <ModalityArea
-          title="Composición de modalidades por año"
-          subtitle="Eventos por modalidad desde 2010."
-          data={modalidadTemporal}
-          modalities={modalities}
-          toggle={tieneHistorico ? (
-            <button
-              type="button" className="toggle-btn"
-              aria-pressed={false} aria-label="Histórico de modalidades: desactivado"
-              onClick={() => setHistMod(true)}
-            >
-              Histórico
-            </button>
-          ) : null}
-        />
-      )}
+      <ModalityArea
+        title="Composición de modalidades por año"
+        subtitle="Eventos por modalidad desde 2010."
+        data={modalidadTemporal}
+        modalities={modalities}
+      />
 
       <div className="section-title">
         ¿Qué modalidad prefiere cada facultad?
       </div>
-      {histFac && tieneHistorico ? (
-        <HistoricalComposition
-          title="Composición de los participantes por facultad y año — no es tasa de participación"
-          subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción proviene de cada facultad (top 8 + 'Otras'). Composición de la cohorte de participantes, no proporción de participación por facultad."
-          data={histFacultad.rows}
-          categories={histFacultad.categories}
-          note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
-          toggle={
-            <button
-              type="button" className="toggle-btn active"
-              aria-pressed={true} aria-label="Histórico por facultad: activado"
-              onClick={() => setHistFac(false)}
-            >
-              Histórico
-            </button>
-          }
-        />
-      ) : (
-        <StackedByFaculty
-          title="¿Qué modalidad prefiere cada facultad?"
-          subtitle="Composición (%) de los eventos de movilidad por facultad."
-          data={modFacData}
-          modalities={modalities}
-          toggle={tieneHistorico ? (
-            <button
-              type="button" className="toggle-btn"
-              aria-pressed={false} aria-label="Histórico por facultad: desactivado"
-              onClick={() => setHistFac(true)}
-            >
-              Histórico
-            </button>
-          ) : null}
-        />
-      )}
+      <StackedByFaculty
+        title="¿Qué modalidad prefiere cada facultad?"
+        subtitle="Composición (%) de los eventos de movilidad por facultad."
+        data={modFacData}
+        modalities={modalities}
+      />
 
       <div className="section-title">
         Estacionalidad y resultado de la experiencia
