@@ -26,6 +26,18 @@ body {
   min-height: 100vh;
 }
 
+/* En la pestaña Insights no hay sidebar: el contenido ocupa todo el ancho. */
+.app--sin-sidebar {
+  grid-template-columns: 1fr;
+}
+
+/* Insignia con ayuda (cursor de ayuda y foco visible por teclado). */
+.badge-help { cursor: help; }
+.badge-help:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---------- Sidebar de filtros ---------- */
 .sidebar {
   background: var(--panel);

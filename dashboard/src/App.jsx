@@ -86,14 +86,21 @@ export default function App() {
     Object.values(filters.cat).reduce((a, s) => a + (s ? s.size : 0), 0) +
     Object.values(filters.num).filter((r) => r && r.active).length
 
+  // En la pestaña Insights NO se muestra el sidebar de filtros: sus gráficas son
+  // globales y no reaccionan a los filtros, así que exponerlos daría la falsa
+  // impresión de que modifican esas vistas. El Explorador sí lo muestra.
+  const mostrarSidebar = tab !== 'insights'
+
   return (
-    <div className="app">
-      <Sidebar
-        cube={cube} filters={filters}
-        toggleCat={toggleCat} clearCat={clearCat} selectAllCat={selectAllCat}
-        setCatSet={setCatSet} setNum={setNum} clearNum={clearNum}
-        resetAll={resetAll} activeCount={activeCount} tab={tab}
-      />
+    <div className={mostrarSidebar ? 'app' : 'app app--sin-sidebar'}>
+      {mostrarSidebar && (
+        <Sidebar
+          cube={cube} filters={filters}
+          toggleCat={toggleCat} clearCat={clearCat} selectAllCat={selectAllCat}
+          setCatSet={setCatSet} setNum={setNum} clearNum={clearNum}
+          resetAll={resetAll} activeCount={activeCount} tab={tab}
+        />
+      )}
       <Dashboard cube={cube} filters={filters} toggleCat={toggleCat} tab={tab} setTab={setTab} />
     </div>
   )
@@ -132,13 +139,6 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
         El número junto a cada opción indica estudiantes <strong>con</strong> experiencia
         de internacionalización.
       </div>
-
-      {tab === 'insights' && (
-        <div className="sidebar-note">
-          Los filtros aplican a la pestaña <strong>Explorador</strong>. La pestaña Insights
-          muestra hallazgos globales del histórico completo.
-        </div>
-      )}
 
       {CAT_FILTER_DIMS.map((dim) => (
         <FilterGroup

@@ -53,15 +53,28 @@ export default function CategoricalAssociation({ data, tasaBase }) {
 
   const variable = categoricas.find((d) => d.var === sel) || categoricas[0]
   // La tabla ya viene ordenada por tasa_pct desc desde Python; se respeta.
-  const filas = variable.tabla
+  // Se ocultan las categorías "Sin dato"/"Sin información": no aportan a la lectura
+  // de la asociación y distorsionan el eje (p. ej. estrato "Sin dato" al 100%).
+  const SIN_DATO = new Set(['Sin dato', 'Sin información', 'Sin informacion', 'N/A', 'NA'])
+  const filas = variable.tabla.filter((f) => !SIN_DATO.has(String(f.categoria)))
 
   return (
     <div className="card wide">
       <div className="card-head">
         <h3>Tasa de participación por categoría</h3>
         {variable.cramers_v != null && (
-          <span className="badge-historico" title="Fuerza de asociación (V de Cramér)">
-            V de Cramér: {fmtV(variable.cramers_v)} ({variable.magnitud_v})
+          <span
+            className="badge-historico badge-help"
+            tabIndex={0}
+            title={
+              'V de Cramér: mide la FUERZA de la asociación entre esta variable y la ' +
+              'participación, en una escala de 0 a 1.\n' +
+              '0 = sin asociación; 1 = asociación perfecta.\n' +
+              'Guía: <0,1 insignificante · 0,1–0,3 pequeña · 0,3–0,5 media · >0,5 grande.\n' +
+              'No indica dirección ni causa, solo cuánto se relacionan.'
+            }
+          >
+            V de Cramér: {fmtV(variable.cramers_v)} ({variable.magnitud_v}) ⓘ
           </span>
         )}
         <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
@@ -88,11 +101,13 @@ export default function CategoricalAssociation({ data, tasaBase }) {
           <CartesianGrid stroke="#eef2f7" />
           <XAxis dataKey="categoria" tick={{ fontSize: 10 }} interval={0}
                  angle={-25} textAnchor="end" height={56} />
-          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`}
+                 domain={[0, 'auto']} allowDataOverflow={false} />
           <Tooltip content={<Tip tasaBase={tasaBase} />} cursor={{ fill: '#f1f5f9' }} />
           {tasaBase != null && (
             <ReferenceLine y={tasaBase} stroke="#d97706" strokeDasharray="4 3"
-              label={{ value: `base ${fmtPct1(tasaBase)}`, position: 'right',
+              ifOverflow="extendDomain"
+              label={{ value: `base ${fmtPct1(tasaBase)}`, position: 'insideTopRight',
                        fontSize: 9, fill: '#d97706' }} />
           )}
           <Bar dataKey="tasa_pct" name="Tasa %" fill={BAR_COLOR}

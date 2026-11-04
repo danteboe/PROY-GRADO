@@ -69,17 +69,24 @@ export default function LogisticOddsRatios({ data }) {
       <ResponsiveContainer width="100%" height={alto}>
         <ComposedChart
           layout="vertical" data={rows}
-          margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
+          margin={{ left: 20, right: 24, top: 8, bottom: 8 }}
           aria-label="Forest-plot de razones de probabilidad del modelo logístico con intervalos de confianza del 95%"
         >
           <CartesianGrid stroke="#eef2f7" horizontal={false} />
           <XAxis type="number" tick={{ fontSize: 10 }} domain={[vmin - margen, vmax + margen]}
-                 tickFormatter={fmt2} />
+                 tickFormatter={fmt2} height={48}
+                 label={{ value: 'Razón de probabilidad (OR) — escala; 1 = sin asociación',
+                          position: 'insideBottom', offset: -2,
+                          style: { fontSize: 11, fill: '#475569', textAnchor: 'middle' } }} />
           <YAxis type="category" dataKey="label" tick={{ fontSize: 10 }}
-                 width={190} interval={0} />
+                 width={200} interval={0}
+                 label={{ value: 'Predictor (estandarizado)', angle: -90,
+                          position: 'insideLeft', offset: 10,
+                          style: { fontSize: 11, fill: '#475569', textAnchor: 'middle' } }} />
           <Tooltip content={<Tip />} />
           <ReferenceLine x={1} stroke="#d97706" strokeDasharray="4 3"
-            label={{ value: 'OR = 1', position: 'top', fontSize: 9, fill: '#d97706' }} />
+            label={{ value: 'OR = 1', position: 'insideTopRight',
+                     fontSize: 9, fill: '#d97706' }} />
           <Scatter dataKey="odds_ratio" fill="#1d4ed8" isAnimationActive={false}>
             <ErrorBar dataKey="err" direction="x" width={5} strokeWidth={1.6}
                       stroke="#1d4ed8" />
