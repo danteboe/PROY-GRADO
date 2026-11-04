@@ -740,6 +740,94 @@ asociación de equidad más relevante. Tres salvaguardas enmarcan la lectura:
 estrato debe comunicarse como una \textbf{brecha a atender} con apoyos focalizados,
 jamás como criterio de selección de estudiantes.
 
+\subsection{Evolución temporal de la composición de participantes}
+\label{sec:historico}
+Como complemento longitudinal al perfilamiento anterior, esta subsección examina
+cómo ha cambiado la \textbf{composición de los participantes} a lo largo de los
+años. La única variable temporal fina a nivel estudiante es el \emph{año de la
+primera movilidad}, que \textbf{solo existe para quienes participan}; por eso todas
+las cifras se leen como la \emph{composición interna de cada cohorte anual de
+participantes} (p.\,ej. qué porcentaje de los participantes de un año pertenecía a
+cada estrato) o como el \emph{perfil académico medio} de esas cohortes, y
+\textbf{no} como la proporción de cada grupo de la población que participó. Las
+figuras y tablas se generan con el notebook
+\texttt{07\_historico\_evolucion} desde la \textbf{misma fuente de cálculo}
+(\texttt{src/historical\_stats.py}) que alimenta el dashboard, con redondeo único;
+una celda de verificación detiene el \emph{build} si las cifras del informe
+divergen de las de la herramienta web. Se conservan los años con volumen suficiente
+($n \geq 30$, a partir de 2012) y se excluyen las categorías ``Sin dato'',
+renormalizando cada año a 100\,\%.
+
+\input{tablas/historico_narrativa.tex}
+
+La Figura~\ref{fig:hist-estrato} muestra el caso guía: la composición por estrato
+social de cada cohorte anual de participantes. Las
+Figuras~\ref{fig:hist-genero}, \ref{fig:hist-facultad} y \ref{fig:hist-modalidad}
+repiten el ejercicio para género, facultad (las ocho de mayor volumen más
+``Otras'') y modalidad de movilidad, y la Figura~\ref{fig:hist-numericas} resume el
+perfil académico medio (PGA, ICFES y avance) por año.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_estrato.png}
+\caption{Composición de los participantes por estrato social, según el año de la
+primera movilidad (porcentaje dentro de cada año, participantes con dato de
+estrato).}
+\label{fig:hist-estrato}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_genero.png}
+\caption{Composición de los participantes por género, según el año de la primera
+movilidad.}
+\label{fig:hist-genero}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_facultad.png}
+\caption{Composición de los participantes por facultad (ocho de mayor volumen más
+``Otras''), según el año de la primera movilidad.}
+\label{fig:hist-facultad}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_modalidad.png}
+\caption{Composición de los participantes por modalidad de movilidad, según el año
+de la primera movilidad.}
+\label{fig:hist-modalidad}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_numericas.png}
+\caption{Perfil académico medio de las cohortes de participantes por año: PGA medio
+(eje izquierdo, escala 0--5) e ICFES y semestre de avance medios (eje derecho).}
+\label{fig:hist-numericas}
+\end{figure}
+
+La Tabla~\ref{tab:hist-estrato} detalla la composición por estrato y año, y la
+Tabla~\ref{tab:hist-num} resume el perfil académico medio por año.
+
+\input{tablas/historico_estrato.tex}
+
+\begin{table}[H]
+\centering
+\caption{Perfil académico medio de las cohortes de participantes por año.}
+\label{tab:hist-num}
+\small
+\input{tablas/historico_numericas.tex}
+\end{table}
+
+\textbf{Encuadre y limitaciones.} Los cambios de composición descritos son
+\textbf{asociaciones} observadas, no relaciones causales. Al no existir un
+denominador temporal para los no participantes, estas series \textbf{no} miden la
+proporción de cada grupo que participó, sino cómo se reparte internamente cada
+cohorte anual de participantes; esa es la lectura correcta para no sobreinterpretar
+las tendencias.
+
 % ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
 \label{sec:reorientacion}
