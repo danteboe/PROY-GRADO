@@ -37,7 +37,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from . import comparative_stats, config, utils
+from . import comparative_stats, config, historical_stats, utils
 
 KEY = config.STUDENT_KEY
 
@@ -234,6 +234,10 @@ def build_cube(verbose: bool = True) -> dict:
 
     # Análisis comparativo inferencial (fuente única; alcance pregrado, RF-1/RF-2).
     out["comparativo"] = comparative_stats.compute_comparative(df, "pregrado")
+
+    # Evolución temporal (histórico): composición de participantes por año (fuente
+    # única; mismo patrón que el comparativo, RF-1/RF-2).
+    out["historico"] = historical_stats.compute_historical(df)
 
     if verbose:
         print(f"Celdas del cubo: {len(rows):,} | "
