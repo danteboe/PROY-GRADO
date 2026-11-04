@@ -1726,5 +1726,168 @@ críticas verificadas sobre el CSV/.tex que el informe efectivamente imprime. Si
 el futuro alguien cambiara el cálculo sin regenerar los artefactos, este notebook
 fallaría y detendría el build, protegiendo la consistencia web↔informe (RNF-1).
 """),
+    md(r"""
+## 7. Tasa de inicio de movilidad por estrato y año (fuente única `historical_rates`)
+
+A diferencia de las secciones anteriores ---que describen la **composición interna**
+de cada cohorte de participantes y por tanto **no tienen denominador poblacional**---,
+esta sección usa un eje con **denominador reconstruido**: la **tasa de inicio de
+movilidad por año y grupo**. El cálculo vive en `src.historical_rates`
+(módulo hermano de `historical_stats`), que también alimenta la clave
+`historico_tasas` de `data.json`. El notebook **no recomputa**: solo
+lee/dibuja/tabula/verifica.
+
+**Encuadre (Opción A).** Para cada año $Y$ se define el conjunto de estudiantes
+**activos** (al menos un registro en `historial_rendimiento` ese año, único por
+estudiante y año). El **numerador** son los activos del grupo cuyo
+`PRIMER_ANIO_MOVILIDAD == Y`; la **tasa** es $100 \cdot num/den$ por grupo y año,
+siempre en $[0, 100]$ porque el numerador es subconjunto del denominador. Es un
+**flujo de inicio**, no prevalencia; asociación observada, no causa. Se excluye
+``Sin dato`` y se suprimen celdas con $den < 100$.
+"""),
+    code(r"""
+# Carga de la segunda fuente y cálculo ÚNICO de las tasas (no se recomputa estadística:
+# compute_historical_rates es la fuente única, igual que compute_historical arriba).
+from src import historical_rates as hr
+
+rend = utils.load_source('historial_rendimiento', columns=['CODIGO_ESTUDIANTE', 'PERIODO'])
+tasas = hr.compute_historical_rates(df, rend)
+
+meta_t = tasas['meta']
+anios_t = sorted({c['anio'] for c in tasas['estrato']})
+print('Encuadre:', meta_t['framing'], '| rango:', meta_t['anio_min'], '->', meta_t['anio_max'])
+print('Umbral de denominador (den>=):', meta_t['umbral_den'])
+print('Años con tasa de estrato:', anios_t[0], '->', anios_t[-1], f'({len(anios_t)} años)')
+print('Participantes sin rendimiento (fuera del numerador):', meta_t['n_part_sin_rendimiento'])
+print('Activos sin contrapartida analítica:', meta_t['n_activos_sin_analitico'])
+print('\nNota de encuadre:\n ', meta_t['nota_framing'])
+"""),
+    md(r"""
+### Figura: tasa de inicio de movilidad por estrato y año
+Una línea por estrato (excluido ``Sin dato``), con la tasa en porcentaje a lo largo
+de los años. Los huecos (celdas suprimidas por $den < 100$) **no se interpolan**
+(`connectNulls=false` en la web; aquí se dibuja como corte de la línea), igual que
+en el dashboard.
+"""),
+    code(r"""
+# --- Figura: tasa_pct por estrato x año (multi-línea) ---
+df_tasa_estrato = pd.DataFrame(tasas['estrato'])
+# Pivote año x estrato; los huecos quedan NaN (no 0) para no interpolar artificialmente.
+piv_tasa = (df_tasa_estrato.pivot_table(index='anio', columns='categoria',
+                                        values='tasa_pct', aggfunc='first')
+            .sort_index())
+
+fig, ax = plt.subplots(figsize=(11, 5.5))
+x_t = piv_tasa.index.astype(int)
+colores_t = sns.color_palette('deep', n_colors=piv_tasa.shape[1])
+for color, col in zip(colores_t, piv_tasa.columns):
+    serie = piv_tasa[col]
+    ax.plot(x_t, serie.to_numpy(), marker='o', color=color, label=str(col))
+ax.set_title('Tasa de inicio de movilidad por estrato social, según año')
+ax.set_xlabel('Año')
+ax.set_ylabel('Tasa de inicio de movilidad (%)')
+ax.set_xticks(list(x_t))
+ax.tick_params(axis='x', rotation=0)
+ax.set_ylim(bottom=0)
+ax.legend(title='Estrato', bbox_to_anchor=(1.01, 1), loc='upper left', frameon=False)
+plt.tight_layout()
+utils.save_fig(fig, 'fig_hist_tasa_estrato.png')
+plt.show()
+
+# El informe usa \graphicspath{{figuras/}}: copiar la PNG a latex/figuras/ (mismo
+# patrón que las figuras fig_hist_* de la sección de composición).
+shutil.copy2(config.FIGURES_DIR / 'fig_hist_tasa_estrato.png',
+             LATEX_FIG / 'fig_hist_tasa_estrato.png')
+print('copiada ->', (LATEX_FIG / 'fig_hist_tasa_estrato.png').name)
+"""),
+    md(r"""
+### Tabla: tasa de inicio de movilidad por estrato y año
+Una fila por (año, estrato) con numerador, denominador y tasa. CSV neutro en
+`reports/tables/` (sin coma decimal) y `.tex` longtable en `latex/tablas/`. La
+precisión de la columna de tasa se deriva de `hr.DECIMALES_TASA` (redondeo único).
+"""),
+    code(r"""
+# --- Tabla: tasa de estrato x año (longtable: una fila por año-estrato) ---
+df_tasa = pd.DataFrame(tasas['estrato'])[['anio', 'categoria', 'num', 'den', 'tasa_pct']]
+df_tasa = df_tasa.sort_values(['anio', 'categoria'], kind='mergesort').reset_index(drop=True)
+df_tasa.to_csv(config.TABLES_DIR / 'historico_tasas_estrato.csv', index=False, encoding='utf-8')
+
+cols_tasa = [
+    ('anio', 'Año'), ('categoria', 'Estrato'), ('num', 'Inician'),
+    ('den', 'Activos'), ('tasa_pct', 'Tasa (%)'),
+]
+# decimales_por_col keyed por columna; la tasa usa hr.DECIMALES_TASA (fuente única).
+dec_tasa = {'anio': None, 'categoria': None, 'num': None, 'den': None,
+            'tasa_pct': hr.DECIMALES_TASA}
+# El año NO es magnitud (sin separador de miles) -> string en el .tex.
+df_tasa_tex = df_tasa.copy()
+df_tasa_tex['anio'] = df_tasa_tex['anio'].astype(int).astype(str)
+df_tasa_tex['categoria'] = df_tasa_tex['categoria'].astype(str)
+tex_tasa = df_to_latex_booktabs(
+    df_tasa_tex, cols_tasa, dec_tasa, longtable=True,
+    caption='Tasa de inicio de movilidad por estrato social y año: estudiantes activos (con registro de rendimiento) cuyo primer evento ocurrió ese año sobre el total de activos del grupo ese año (den >= 100).',
+    label='tab:hist-tasa-estrato')
+(LATEX_TABLAS / 'historico_tasas_estrato.tex').write_text(tex_tasa, encoding='utf-8')
+print('historico_tasas_estrato: CSV + .tex OK (', len(df_tasa), 'filas )')
+"""),
+    md(r"""
+### Narrativa de encuadre de la tasa (fuente única)
+La nota de encuadre proviene de `tasas['meta']['nota_framing']` (misma fuente que la
+web), interpolada a `.tex` para que informe y dashboard cuenten lo mismo. El informe
+la incluye con `\input{tablas/historico_tasas_narrativa.tex}`.
+"""),
+    code(r"""
+tex_nota_tasas = (
+    "% Nota de encuadre de la tasa de inicio de movilidad, interpolada desde historical_rates: NO editar a mano.\n"
+    + _escapar_tex(meta_t['nota_framing']) + "\n"
+)
+(LATEX_TABLAS / 'historico_tasas_narrativa.tex').write_text(tex_nota_tasas, encoding='utf-8')
+print('historico_tasas_narrativa.tex escrita. Longitud:', len(meta_t['nota_framing']), 'caracteres.')
+print('\n' + meta_t['nota_framing'])
+"""),
+    md(r"""
+## 8. Verificación de consistencia M1 de la tasa (NUEVA)
+Mismo patrón que la M1 de la sección de composición, aplicado a la **tasa**: para una
+celda fija (estrato, año) se compara `tasa_pct` entre **tres orígenes** ---`tasas`
+(cálculo), `data.json['historico_tasas']['estrato']` (web) y el **CSV renderizado**
+`historico_tasas_estrato.csv` (lo que el informe imprime)--- a la precisión publicada
+(`hr.DECIMALES_TASA`). El `assert` **falla el build** si divergen. Requiere que
+`python -m src.export_dashboard` se haya corrido antes (igual que la M1 existente).
+"""),
+    code(r"""
+def _r_tasa(v):
+    return None if v is None else round(float(v), hr.DECIMALES_TASA)
+
+# Celda fija determinista: primer año de la serie de estrato y, dentro de él, el
+# estrato de menor etiqueta (orden estable, sin depender de un valor concreto).
+anio_fijo_t = int(anios_t[0])
+cand = sorted([c for c in tasas['estrato'] if int(c['anio']) == anio_fijo_t],
+              key=lambda r: str(r['categoria']))
+assert cand, f'No hay tasa de estrato para el año {anio_fijo_t} en tasas.'
+tasa_calc = cand[0]
+estrato_fijo_t = str(tasa_calc['categoria'])
+
+# (2) Desde data.json (lo que consume la web).
+data_json_t = json.loads(DATA_JSON.read_text(encoding='utf-8'))
+ht = data_json_t['historico_tasas']['estrato']
+tasa_web = [r for r in ht
+            if int(r['anio']) == anio_fijo_t and str(r['categoria']) == estrato_fijo_t][0]
+
+# (3) Desde el CSV renderizado (fuente directa del .tex del informe).
+with open(config.TABLES_DIR / 'historico_tasas_estrato.csv', encoding='utf-8') as fh:
+    filas_csv_tasa = list(csv.DictReader(fh))
+tasa_csv_row = [r for r in filas_csv_tasa
+                if int(r['anio']) == anio_fijo_t and str(r['categoria']) == estrato_fijo_t][0]
+
+t_calc = _r_tasa(tasa_calc['tasa_pct'])
+t_web = _r_tasa(tasa_web['tasa_pct'])
+t_csv = _r_tasa(tasa_csv_row['tasa_pct'] if tasa_csv_row['tasa_pct'] not in ('', None) else None)
+assert t_calc == t_web == t_csv, \
+    f'Inconsistencia tasa estrato {estrato_fijo_t} año {anio_fijo_t}: calc={t_calc} web={t_web} csv={t_csv}'
+
+print('[M1-tasas] Consistencia verificada (tasas == data.json[historico_tasas] == CSV/.tex):')
+print(f'  Tasa de inicio estrato {estrato_fijo_t} (año {anio_fijo_t}) = {t_calc}%')
+print('[M1-tasas] OK — ninguna divergencia.')
+"""),
 ]
 NOTEBOOKS['07_historico_evolucion'] = ("Evolución temporal de la composición de participantes", nb07)

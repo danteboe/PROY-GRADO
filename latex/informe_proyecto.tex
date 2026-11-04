@@ -828,6 +828,56 @@ proporción de cada grupo que participó, sino cómo se reparte internamente cad
 cohorte anual de participantes; esa es la lectura correcta para no sobreinterpretar
 las tendencias.
 
+\subsubsection{Tasa de inicio de movilidad por año y grupo}
+\label{sec:historico-tasa}
+Las series de composición anteriores no tienen denominador poblacional: describen
+el reparto interno de los participantes de cada año, no qué fracción de cada grupo
+participó. Para complementar esa lectura con una \textbf{tasa} con denominador
+reconstruido se introduce un segundo eje, calculado por el módulo
+\texttt{src/historical\_rates.py} ---hermano de \texttt{historical\_stats.py}---
+que también alimenta la clave \texttt{historico\_tasas} del dashboard, con redondeo
+único y verificación de consistencia que detiene el \emph{build} ante cualquier
+divergencia web--informe.
+
+\textbf{Definición operacional del denominador.} Para cada año $Y$ se reconstruye el
+conjunto de estudiantes \textbf{activos}: aquellos con al menos un registro en
+\texttt{historial\_rendimiento} cuyo año sea $Y$ (clave estudiante más periodo, con
+el año derivado del formato \texttt{AAAASS}), contados una sola vez por estudiante y
+año. El \textbf{numerador} de cada grupo son los estudiantes activos en $Y$ cuyo
+\emph{año de primera movilidad} es exactamente $Y$. La tasa por grupo y año es
+$\text{tasa}_{\%} = 100 \cdot \text{num}/\text{den}$, siempre dentro de
+$[0, 100]$ porque el numerador es, por construcción, un \textbf{subconjunto} del
+denominador (ambos restringidos a activos). El encuadre es por tanto el de una
+\textbf{tasa de inicio de movilidad por año} ---un \emph{flujo} de inicios, no
+\emph{prevalencia} ni \emph{stock}---, calculada de forma independiente para cada
+grupo $\times$ año.
+
+\input{tablas/historico_tasas_narrativa.tex}
+
+\textbf{Limitaciones.} (i)~Las cohortes recientes están incompletas por el rezago en
+el registro de rendimiento y de eventos, por lo que la serie se recorta al rango
+2012--2023. (ii)~La condición de ``activo'' se aproxima por la presencia de un
+registro de rendimiento en el año, que es la mejor señal disponible de matrícula
+vigente pero no la equivale exactamente. (iii)~Se suprimen las celdas con
+denominador $<100$ (minimización y robustez del cociente) y se excluye de forma
+consistente la categoría ``Sin dato'' tanto en el numerador como en el denominador.
+(iv)~La tasa es una \textbf{asociación} observada entre pertenencia a un grupo y
+inicio de movilidad, \textbf{no} una relación causal. La
+Figura~\ref{fig:hist-tasa-estrato} muestra la evolución de esta tasa por estrato
+social, y la Tabla~\ref{tab:hist-tasa-estrato} detalla numerador, denominador y
+tasa por año y estrato.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{fig_hist_tasa_estrato.png}
+\caption{Tasa de inicio de movilidad por año y estrato social: estudiantes activos
+(con registro de rendimiento) cuyo primer evento ocurrió en cada año sobre el total
+de estudiantes activos ese año, por estrato.}
+\label{fig:hist-tasa-estrato}
+\end{figure}
+
+\input{tablas/historico_tasas_estrato.tex}
+
 % ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
 \label{sec:reorientacion}
