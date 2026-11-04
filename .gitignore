@@ -57,3 +57,6 @@ _tmp*.py
 Thumbs.db
 .vscode/
 .idea/
+
+#otros
+.agents/
