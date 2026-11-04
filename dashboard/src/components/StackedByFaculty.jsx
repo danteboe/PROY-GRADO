@@ -24,10 +24,17 @@ function Tip({ active, payload, label }) {
   )
 }
 
-export default function StackedByFaculty({ title, subtitle, data, modalities }) {
+export default function StackedByFaculty({ title, subtitle, data, modalities, toggle }) {
   return (
     <div className="card wide">
-      <h3>{title}</h3>
+      {toggle ? (
+        <div className="card-head">
+          <h3>{title}</h3>
+          {toggle}
+        </div>
+      ) : (
+        <h3>{title}</h3>
+      )}
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={Math.max(260, data.length * 34)}>
         <BarChart data={data} layout="vertical" stackOffset="expand"

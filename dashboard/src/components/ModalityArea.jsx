@@ -27,10 +27,17 @@ function AreaTip({ active, payload, label }) {
 // Composición de eventos por modalidad a lo largo del tiempo (área apilada).
 // `data` debe traer todas las modalidades presentes en cada año (0 si no hay),
 // de lo contrario el apilado muestra huecos.
-export default function ModalityArea({ title, subtitle, data, modalities }) {
+export default function ModalityArea({ title, subtitle, data, modalities, toggle }) {
   return (
     <div className="card wide">
-      <h3>{title}</h3>
+      {toggle ? (
+        <div className="card-head">
+          <h3>{title}</h3>
+          {toggle}
+        </div>
+      ) : (
+        <h3>{title}</h3>
+      )}
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={data} margin={{ left: 4, right: 16, top: 8, bottom: 4 }}>

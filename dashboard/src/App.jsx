@@ -17,6 +17,8 @@ import NumericDist from './components/NumericDist.jsx'
 import OpportunityScatter from './components/OpportunityScatter.jsx'
 import Heatmap from './components/Heatmap.jsx'
 import StackedByFaculty from './components/StackedByFaculty.jsx'
+import HistoricalComposition from './components/HistoricalComposition.jsx'
+import TemporalMean from './components/TemporalMean.jsx'
 import SeasonBars from './components/SeasonBars.jsx'
 import Kpi from './components/Kpi.jsx'
 import CohenDChart from './components/CohenDChart.jsx'
@@ -180,6 +182,10 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
 }
 
 function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
+  // Toggles "Histórico" de las tarjetas de Insights: conmutan entre la vista
+  // agregada actual y su evolución (composición de participantes por año).
+  const [histFac, setHistFac] = useState(false)
+  const [histMod, setHistMod] = useState(false)
   // Navegación por teclado entre pestañas (flechas izquierda/derecha).
   const onTabKeyDown = (e) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
@@ -283,6 +289,51 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
     }
     return arr
   }, [cube])
+
+  // ---- Vistas históricas de COMPOSICIÓN (cube.historico, del exportador) ----
+  // Pivotea una serie [{anio, <dimKey>, n, pct}, ...] a filas de recharts
+  // {anio, <categoria>:pct, <categoria>__n:n}, rellenando 0 las categorías
+  // ausentes por año (mismo patrón que modalidadTemporal/seasonData). Devuelve
+  // { rows, categories }. El pct llega 0..100 desde Python; recharts stackOffset
+  // 'expand' renormaliza, así que basta con pasar el pct tal cual.
+  const pivotComposicion = (serie, dimKey) => {
+    if (!serie || !serie.length) return { rows: [], categories: [] }
+    const categories = [...new Set(serie.map((r) => r[dimKey]))]
+    const byAnio = new Map()
+    for (const r of serie) {
+      const o = byAnio.get(r.anio) || { anio: r.anio }
+      o[r[dimKey]] = r.pct
+      o[`${r[dimKey]}__n`] = r.n
+      byAnio.set(r.anio, o)
+    }
+    const rows = [...byAnio.values()].sort((a, b) => a.anio - b.anio)
+    for (const row of rows) {
+      for (const c of categories) {
+        if (row[c] == null) row[c] = 0
+        if (row[`${c}__n`] == null) row[`${c}__n`] = 0
+      }
+    }
+    return { rows, categories }
+  }
+
+  const histEstrato = useMemo(
+    () => pivotComposicion(cube.historico?.composicion_estrato, 'estrato'),
+    [cube],
+  )
+  const histGenero = useMemo(
+    () => pivotComposicion(cube.historico?.composicion_genero, 'genero'),
+    [cube],
+  )
+  const histFacultad = useMemo(
+    () => pivotComposicion(cube.historico?.composicion_facultad, 'facultad'),
+    [cube],
+  )
+  const histModalidad = useMemo(
+    () => pivotComposicion(cube.historico?.composicion_modalidad, 'modalidad'),
+    [cube],
+  )
+  const histNumerico = cube.historico?.resumen_numerico || null
+  const tieneHistorico = cube.historico != null
 
   // Perfil comparado participantes vs no participantes sobre una dimensión:
   // qué % de cada grupo cae en cada categoría.
@@ -496,7 +547,10 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
         <p>
           Estas vistas son <strong>agregados del histórico completo</strong> de eventos de
           movilidad y <strong>no se ven afectadas por los filtros</strong> del Explorador.
-          Resumen los hallazgos principales del proyecto.
+          Resumen los hallazgos principales del proyecto. Las series temporales describen la{' '}
+          <strong>composición de los participantes</strong> de cada año y el{' '}
+          <strong>perfil académico medio</strong> (PGA/ICFES/avance) de esas cohortes; no son
+          tasas de participación (los no participantes no tienen año asignado).
         </p>
       </div>
 
@@ -505,25 +559,116 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
           filtros, igual que el resto de la pestaña Insights. */}
       <ComparativoInsights comparativo={cube.comparativo} />
 
+      {/* Evolución temporal: composición de los participantes de cada año y
+          perfil académico medio de esas cohortes. NO es tasa de participación
+          (los no participantes no tienen año asignado). */}
+      <div className="section-title">Evolución de los participantes en el tiempo</div>
+      {tieneHistorico ? (
+        <>
+          <HistoricalComposition
+            title="Composición de los participantes por estrato social y año — no es tasa de participación"
+            subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción pertenece a cada estrato. Composición de la cohorte de participantes, no proporción de participación por grupo. Excluye 'Sin dato' y cada año renormaliza a 100%."
+            data={histEstrato.rows}
+            categories={histEstrato.categories}
+            note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
+          />
+          <HistoricalComposition
+            title="Composición de los participantes por género y año — no es tasa de participación"
+            subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción corresponde a cada género. Composición de la cohorte de participantes, no proporción de participación por grupo. Excluye 'Sin dato' y cada año renormaliza a 100%."
+            data={histGenero.rows}
+            categories={histGenero.categories}
+            note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
+          />
+          <TemporalMean
+            title="Perfil académico medio de los participantes por año — no es tasa de participación"
+            subtitle="Media y banda de cuartiles (Q1–Q3) del perfil académico de las cohortes de participantes, por año de su primer evento de movilidad. Describe cómo cambia el perfil medio, no la proporción de participación."
+            series={histNumerico}
+          />
+        </>
+      ) : (
+        <div className="card wide">
+          <p className="card-sub" style={{ margin: 0 }}>
+            Sin datos históricos disponibles. Ejecuta <code>python -m src.export_dashboard</code> para
+            regenerar <code>data.json</code> con la clave <code>historico</code>.
+          </p>
+        </div>
+      )}
+
       <div className="section-title">Panorama histórico de la movilidad</div>
 
       <div className="section-title">Modalidades en el tiempo</div>
-      <ModalityArea
-        title="Composición de modalidades por año"
-        subtitle="Eventos por modalidad desde 2010."
-        data={modalidadTemporal}
-        modalities={modalities}
-      />
+      {histMod && tieneHistorico ? (
+        <HistoricalComposition
+          title="Composición de modalidades de los participantes por año"
+          subtitle="Composición (%) de modalidad de los participantes por año de su primer evento de movilidad (desde 2012). Ojo: esta vista es de participantes-primer-año, no del conteo de eventos de la vista base."
+          data={histModalidad.rows}
+          categories={histModalidad.categories}
+          note="Al activar 'Histórico' cambia la población (de eventos a participantes por año de su primer evento, >=2012) y el rango respecto a la vista base. No es tasa de participación."
+          toggle={
+            <button
+              type="button" className="toggle-btn active"
+              aria-pressed={true} aria-label="Histórico de modalidades: activado"
+              onClick={() => setHistMod(false)}
+            >
+              Histórico
+            </button>
+          }
+        />
+      ) : (
+        <ModalityArea
+          title="Composición de modalidades por año"
+          subtitle="Eventos por modalidad desde 2010."
+          data={modalidadTemporal}
+          modalities={modalities}
+          toggle={tieneHistorico ? (
+            <button
+              type="button" className="toggle-btn"
+              aria-pressed={false} aria-label="Histórico de modalidades: desactivado"
+              onClick={() => setHistMod(true)}
+            >
+              Histórico
+            </button>
+          ) : null}
+        />
+      )}
 
       <div className="section-title">
         ¿Qué modalidad prefiere cada facultad?
       </div>
-      <StackedByFaculty
-        title="¿Qué modalidad prefiere cada facultad?"
-        subtitle="Composición (%) de los eventos de movilidad por facultad."
-        data={modFacData}
-        modalities={modalities}
-      />
+      {histFac && tieneHistorico ? (
+        <HistoricalComposition
+          title="Composición de los participantes por facultad y año — no es tasa de participación"
+          subtitle="De los participantes cuyo primer evento de movilidad ocurrió en cada año, qué fracción proviene de cada facultad (top 8 + 'Otras'). Composición de la cohorte de participantes, no proporción de participación por facultad."
+          data={histFacultad.rows}
+          categories={histFacultad.categories}
+          note="Composición de los participantes de cada año (no es tasa de participación: los no participantes no tienen año asignado). Asociación observada, no causa."
+          toggle={
+            <button
+              type="button" className="toggle-btn active"
+              aria-pressed={true} aria-label="Histórico por facultad: activado"
+              onClick={() => setHistFac(false)}
+            >
+              Histórico
+            </button>
+          }
+        />
+      ) : (
+        <StackedByFaculty
+          title="¿Qué modalidad prefiere cada facultad?"
+          subtitle="Composición (%) de los eventos de movilidad por facultad."
+          data={modFacData}
+          modalities={modalities}
+          toggle={tieneHistorico ? (
+            <button
+              type="button" className="toggle-btn"
+              aria-pressed={false} aria-label="Histórico por facultad: desactivado"
+              onClick={() => setHistFac(true)}
+            >
+              Histórico
+            </button>
+          ) : null}
+        />
+      )}
 
       <div className="section-title">
         Estacionalidad y resultado de la experiencia

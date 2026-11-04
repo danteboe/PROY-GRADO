@@ -63,6 +63,11 @@ export async function loadCube() {
     // objeto {meta, numericas, categoricas, logistica} precalculado en Python
     // (src/comparative_stats.py); los componentes de Insights solo LEEN de aquí.
     comparativo: raw.comparativo || null,
+    // Bloque histórico: evolución temporal de la COMPOSICIÓN de los participantes
+    // por año (estrato/género/facultad/modalidad) y perfil académico medio
+    // (PGA/ICFES/avance). Precalculado en Python (src/historical_stats.py); los
+    // componentes solo LEEN de aquí. No es tasa de participación.
+    historico: raw.historico || null,
   }
 }
 
