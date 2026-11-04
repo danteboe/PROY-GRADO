@@ -1,0 +1,27 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": "NIT-1",
+      "severity": "NIT",
+      "location": "§2, regla 'la facultad no tiene Sin dato relevante'",
+      "problem": "La normalización de facultad reutilizada (comparative_stats.categorical_comparison, verificada) hace .fillna('Sin dato') sobre FACULTAD, por lo que una facultad sin codigo mapeado SI produce la categoria 'Sin dato'. El diseño solo excluye 'Sin dato' de estrato/genero (H1), no de facultad, y afirma que facultad no tiene 'Sin dato' relevante.",
+      "fix": "Decidir explicitamente en historical_stats el manejo de 'Sin dato' en facultad: tratarla como una categoria mas (coherente con el apilado 100%) y corregir la frase, o plegarla dentro de 'Otras'. Elegir una y dejarla escrita."
+    },
+    {
+      "id": "NIT-2",
+      "severity": "NIT",
+      "location": "§2 (bullet de redondeo) y §4 (coherencia web-informe)",
+      "problem": "El diseño dice pasar 'el mismo dict DECIMALES' a df_to_latex_booktabs. La firma real (nb_helpers.py) espera decimales_por_col keyed por clave de columna de la tabla (pct, media, ...), mientras que el DECIMALES de comparative_stats esta keyed por nombre de campo estadistico (media_part, tasa_pct, ...). Mismo concepto, no necesariamente mismas claves.",
+      "fix": "Definir en historical_stats un DECIMALES keyed por los nombres de campo del contrato (pct, media, mediana, q1, q3) y derivar de el el decimales_por_col (mapeo columna->decimales) al tabular. La garantia M1 de fuente unica se mantiene."
+    },
+    {
+      "id": "NIT-3",
+      "severity": "NIT",
+      "location": "§3, fila 4 y nota M2 (toggle de ModalityArea)",
+      "problem": "La vista base usa eventos ANIO>=2010 (verificado en App.jsx modalidadTemporal y subtitulo) y la historica participantes anio>=2012, n>=30. El diseño advierte el cambio de poblacion via subtitulo (M2, bien resuelto) pero no fija el comportamiento del eje X/Y al conmutar.",
+      "fix": "Anadir a la nota M2: al activar el toggle el eje X se recalcula a >=2012 y el eje Y pasa a 0-100%; al desactivar vuelve al conteo de eventos >=2010. Coherente con la decision ya tomada."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\JUAN DAVID\\Documents\\UNIANDES\\8VO SEMESTRE\\PROY GRADO 2026-2\\TRAVAIL\\PROY-GRADO\\.agents\\tasks\\design-review.md"
+}

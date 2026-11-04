@@ -1,0 +1,33 @@
+{
+  "project_type": "Pipeline analítico Python (pandas/scipy/scikit-learn) + dashboard React/Vite/Recharts sin backend + informe LaTeX. Metodología CRISP-DM.",
+  "language": "Python 3.12 (pipeline), JavaScript/JSX (dashboard), LaTeX (informe)",
+  "build_system": "Python: módulo ejecutable `python -m src.export_dashboard` y generador de notebooks `python build_notebooks.py <prefijo>` (nbformat + nbclient, kernel python3, cwd=notebooks/). Dashboard: Vite (`npm run build` -> dashboard/dist). Informe: pdflatex (MiKTeX 23.4).",
+  "test_framework": "No hay runner formal. La verificación primaria de consistencia (RNF-1) son ASERCIONES en la celda final del notebook 06; si divergen, falla `python build_notebooks.py 06`. pytest NO está en requirements.txt y NO se añade.",
+  "build_command": "C:\\Python312\\python.exe -m src.export_dashboard  (data.json);  C:\\Python312\\python.exe build_notebooks.py 06  (PNG/CSV/.tex);  cd dashboard; npm run build  (web)",
+  "test_command": "C:\\Python312\\python.exe build_notebooks.py 06 (incluye la celda de consistencia M1); npm run build (dashboard en verde)",
+  "verification_instructions": "1) `C:\\Python312\\python.exe -m src.export_dashboard` exit 0 y data.json contiene out['comparativo'] con meta/numericas/categoricas/logistica. 2) `C:\\Python312\\python.exe build_notebooks.py 06` exit 0 (genera 3 PNG en reports/figures, 3 CSV en reports/tables, 3 .tex + narrativa en latex/tablas, copia PNG a latex/figuras, y la celda de consistencia M1 pasa). 3) `cd dashboard; npm run build` exit 0. 4) pdflatex dos pasadas sobre latex/informe_proyecto.tex exit 0, PDF con MAS paginas que antes. 5) Comprobacion de coherencia: media de PGA por grupo y d de Cohen de PGA IDENTICOS entre data.json y reports/tables/comparativo_numericas.csv (fuente del .tex).",
+  "snapshot_or_generated_files": "dashboard/public/data.json (generado por `python -m src.export_dashboard`). reports/figures/fig_comparativo_*.png, reports/tables/comparativo_*.csv, latex/tablas/comparativo_*.tex y latex/figuras/fig_comparativo_*.png (generados por `python build_notebooks.py 06`). latex/informe_proyecto.pdf (generado por pdflatex). Ninguno se versiona como snapshot de test; se regeneran por los comandos del pipeline.",
+  "environment_constraints": "Usar SIEMPRE el interprete C:\\Python312\\python.exe (3.12.4), NO el launcher `py` ni Python 3.11. scipy 1.16.3 y scikit-learn 1.7.2 presentes; statsmodels AUSENTE y NO se instala (RNF-2). No añadir dependencias JS ni LaTeX. build_notebooks.py corre con cwd=notebooks/, por lo que toda ruta a latex/ o reports/ debe derivarse de config.ROOT_DIR / config.FIGURES_DIR / config.TABLES_DIR (absolutas), nunca relativa al cwd. Timeout del notebook: 1800 s (bootstrap B=1000 puede tardar).",
+  "contribution_requirements": "RNF-4: UI e informe en español; comentarios de codigo en español; nombres de columnas en MAYUSCULAS; docstrings explicativos. RNF-1 (no negociable): consistencia numerica EXACTA web<->informe desde una fuente unica (src/comparative_stats.py); redondeo una sola vez en Python via dict DECIMALES por campo aplicado a data.json Y a las tablas .tex. RNF-3: solo agregados, supresion n<30, sin min/max crudos. RNF-7: NO tocar la escala de color/luminancia del Heatmap. RNF-2/RNF-9: reproducible con los comandos existentes, sin dependencias nuevas, sin pasos manuales.",
+  "key_patterns": "export_dashboard.build_cube arma el dict `out` y main() lo serializa a dashboard/public/data.json con json.dump(ensure_ascii=False, separators=(',',':')). data.js::loadCube() mapea cada clave con el patron `clave: raw.x || []`. Los componentes Recharts (ver NumericDist.jsx) usan ComposedChart/Bar/Line/Tooltip/ResponsiveContainer y clases CSS card/card-sub/section-title/custom-tooltip/tt-*. App.jsx tiene pestañas accesibles role=tablist/tab/tabpanel; panel-insights contiene ModalityArea, StackedByFaculty, SeasonBars, DonutResultado (conservar). notebook_defs.py define NOTEBOOKS[prefijo]=(titulo,[celdas]) con md()/code()/BOOTSTRAP de nb_helpers.py. utils.save_fig escribe SOLO en reports/figures/. config: RANDOM_SEED=42, ROOT_DIR, FIGURES_DIR, TABLES_DIR. _faculty_name_map() en export_dashboard devuelve codigo->nombre .title().",
+  "relevant_files": [
+    "src/comparative_stats.py (CREAR - fuente unica de calculo)",
+    "src/export_dashboard.py (MODIFICAR - integrar compute_comparative; delegar _faculty_name_map)",
+    "src/config.py (LEER - RANDOM_SEED, ROOT_DIR, FIGURES_DIR, TABLES_DIR)",
+    "src/utils.py (LEER - save_fig, load_source, fix_mojibake)",
+    "notebook_defs.py (MODIFICAR - añadir notebook 06 y su celda de consistencia M1 + narrativa M2)",
+    "nb_helpers.py (LEER/MODIFICAR - BOOTSTRAP, md/code; posible hogar de df_to_latex_booktabs)",
+    "build_notebooks.py (LEER - ejecuta por prefijo, cwd=notebooks/, timeout 1800)",
+    "dashboard/src/data.js (MODIFICAR - accesor comparativo)",
+    "dashboard/src/App.jsx (MODIFICAR - reorganizar pestaña Insights)",
+    "dashboard/src/components/NumericDist.jsx (LEER - patron Recharts a seguir)",
+    "dashboard/src/components/CohenDChart.jsx, ComparativeBoxplots.jsx, CategoricalAssociation.jsx, LogisticOddsRatios.jsx (CREAR)",
+    "dashboard/src/styles.css (LEER - clases card/section-title/tt-*)",
+    "dashboard/package.json (LEER - recharts ^2.12.7 ya presente)",
+    "latex/informe_proyecto.tex (MODIFICAR - seccion nueva entre linea 507 sec:insights y linea 630 sec:reorientacion; graphicspath=figuras/, booktabs/longtable/tabularx/graphicx ya cargados, SIN siunitx/csvsimple)",
+    "latex/tablas/ (CREAR directorio - .tex booktabs + narrativa)",
+    "latex/figuras/ (destino de copia de PNG)",
+    ".agents/tasks/comparativo-insights/diseno.md, requisitos.md, design-review.md, entorno.md, plan.md (LEER)"
+  ],
+  "directory_structure": "src/ (pipeline Python: config, utils, build_dataset, export_dashboard, internationalization; CREAR comparative_stats.py). notebooks/ (.ipynb generados). reports/figures/ (PNG) y reports/tables/ (CSV). dashboard/ (React: src/App.jsx, src/data.js, src/components/*.jsx, src/styles.css, public/data.json). latex/ (informe_proyecto.tex, figuras/, CREAR tablas/). build_notebooks.py + notebook_defs.py + nb_helpers.py en la raiz. data_processed/dataset_analitico_estudiante.parquet (233987x44, pregrado 140422, participantes pregrado 5821)."
+}

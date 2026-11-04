@@ -1,0 +1,54 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "MEDIUM",
+      "title": "La consistencia exacta web/informe solo se verifica sobre data.json, no sobre los .tex que el informe realmente muestra",
+      "where": "diseno.md §4, §3 (redondeo), §5.4; contra RNF-1 y criterio 9",
+      "problem": "El redondeo que entra a data.json (dashboard) y el formateo de decimales de df_to_latex_booktabs (informe) son dos pasos de formateo distintos sobre el mismo dict, y el diseño no fija que usen el mismo número de decimales por campo. La celda de verificación compara compute_comparative vs data.json, nunca data.json vs el .tex renderizado, por lo que dashboard e informe pueden mostrar precisiones distintas para la misma cifra, violando RNF-1.",
+      "fix": "Definir un diccionario único de precisión por campo aplicado tanto al redondeo de data.json como a df_to_latex_booktabs (unica diferencia permitida: separador decimal). Ampliar la celda del notebook 06 para comparar el CSV/.tex generado contra data.json (al menos una numerica y una categorica) y fallar el build si difieren a la precision publicada."
+    },
+    {
+      "id": "M2",
+      "severity": "MEDIUM",
+      "title": "El resumen narrativo con cifras citadas se redacta a mano en el .tex, en conflicto con RF-14 y con riesgo para RNF-1",
+      "where": "diseno.md §6.3, §5.1 subseccion 1; contra RF-14 y RNF-1",
+      "problem": "RF-14 prohibe cifras escritas a mano en el .tex de esta seccion. El diseno deja el parrafo narrativo (3-4 variables de mayor efecto con sus magnitudes) como prosa escrita a mano confiando en copiar las cifras de comparativo; si el calculo cambia, la prosa queda divergente del data.json/tabla, violando RF-14 y RNF-1.",
+      "fix": "Fijar una via: (a) generar la narrativa con cifras interpoladas desde Python (comparativo_narrativa.tex + campo resumen_narrativo en data.json), incluida con \\input, sin cifras a mano; o (b) prohibir numeros literales en la prosa y dejar todo numero solo en tablas/figuras autogeneradas. Se recomienda (a)."
+    },
+    {
+      "id": "N1",
+      "severity": "NIT",
+      "title": "Ubicacion de df_to_latex_booktabs sin fijar",
+      "where": "diseno.md §5.2, §5.4",
+      "problem": "Se invoca df_to_latex_booktabs pero no se declara donde vive; podria terminar en comparative_stats.py mezclando calculo con presentacion.",
+      "fix": "Fijar que df_to_latex_booktabs vive en el notebook 06 (o nb_helpers.py), no en src/comparative_stats.py, que debe quedar de calculo puro."
+    },
+    {
+      "id": "N2",
+      "severity": "NIT",
+      "title": "meta.tasa_base_pct / n_part / n_no no marcados como valores computados en runtime",
+      "where": "diseno.md §3",
+      "problem": "A diferencia de meta.generado (ya aclarado), tasa_base_pct=4.15, n_part=5821 y n_no=134601 aparecen como literales sin nota de que se calculan en ejecucion.",
+      "fix": "Anadir nota en §3: n_part, n_no y tasa_base_pct son ilustrativos y se derivan del df filtrado por alcance dentro de compute_comparative (100*part.mean())."
+    },
+    {
+      "id": "N3",
+      "severity": "NIT",
+      "title": "Coercion de ESTRATO_SOCIAL (y categoricas) a string no fijada en el modulo de calculo",
+      "where": "diseno.md §2.9, §3",
+      "problem": "export_dashboard aplica .astype(str)+fillna('Sin dato') al estrato; el contrato publica categoria como string. Si comparative_stats no aplica la misma normalizacion, las etiquetas podrian salir como floats (6.0) o NaN, desalineando web/informe/heatmap.",
+      "fix": "Fijar en §2.9 que categorical_comparison normaliza toda categorica igual que el cubo: .astype(str) tras mapear faltante a 'Sin dato', y FACULTAD via faculty_name_map()."
+    },
+    {
+      "id": "N4",
+      "severity": "NIT",
+      "title": "Bootstrap de OR bajo class_weight='balanced' conviene declararlo como verosimilitud reponderada",
+      "where": "diseno.md §2.8",
+      "problem": "El IC percentil de exp(coef_) con class_weight='balanced' corresponde a una perdida reponderada, no a la verosimilitud binomial no ponderada; defendible pero el lector tecnico podria leerlo como logistica clasica.",
+      "fix": "Anadir en meta_modelo.nota y en §5.4 que los OR/IC provienen de un ajuste con perdida reponderada por clase y son aproximacion comparativa, no estimaciones ML binomiales no ponderadas."
+    }
+  ],
+  "reviewDoc": "c:\\Users\\JUAN DAVID\\Documents\\UNIANDES\\8VO SEMESTRE\\PROY GRADO 2026-2\\TRAVAIL\\PROY-GRADO\\.agents\\tasks\\comparativo-insights\\design-review.md"
+}

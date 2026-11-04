@@ -1,0 +1,7 @@
+{
+  "task_id": "task-historico-insights",
+  "task_description": "Añadir vistas de evolución temporal ('histórico') a la pestaña Insights del dashboard: nueva sección agregada 'historico' en data.json (módulo Python src/historical_stats.py), vistas en el dashboard React (tarjetas dedicadas + toggles, framing composición-no-tasa, accesibilidad) y una subsección en el informe LaTeX alimentada por el mismo pipeline de cálculo (notebook 07). Todo en español, sin microdatos y sin dependencias nuevas.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}
