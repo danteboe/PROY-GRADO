@@ -74,6 +74,11 @@ export async function loadCube() {
     // histórico de composición. Precalculado en Python (src/historical_rates.py);
     // los componentes solo LEEN de aquí.
     historicoTasas: raw.historico_tasas || null,
+    // Bloque de clustering (K-means sobre participantes de pregrado): perfiles
+    // internos descriptivos. Objeto {meta, curvas, clusters, narrativa}
+    // precalculado en Python (src/clustering_participantes.py); los componentes
+    // solo LEEN de aquí. No se recalcula K-means en el cliente.
+    clustering: raw.clustering || null,
   }
 }
 

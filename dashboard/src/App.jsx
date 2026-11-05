@@ -26,6 +26,7 @@ import CohenDChart from './components/CohenDChart.jsx'
 import ComparativeBoxplots from './components/ComparativeBoxplots.jsx'
 import CategoricalAssociation from './components/CategoricalAssociation.jsx'
 import LogisticOddsRatios from './components/LogisticOddsRatios.jsx'
+import ClusteringInsights from './components/ClusteringInsights.jsx'
 
 const CAT_FILTER_DIMS = [
   'nivel', 'facultad', 'programa', 'genero', 'estrato',
@@ -621,6 +622,12 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
           </p>
         </div>
       )}
+
+      {/* Perfiles internos de los participantes (K-means). Lee cube.clustering,
+          precalculado en Python (src/clustering_participantes.py); los componentes
+          solo LEEN de aquí. No se recalcula K-means en el cliente. */}
+      <div className="section-title">Perfiles de los participantes (clustering)</div>
+      <ClusteringInsights clustering={cube.clustering} />
 
       <div className="section-title">Panorama histórico de la movilidad</div>
 
