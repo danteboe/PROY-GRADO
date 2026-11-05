@@ -37,7 +37,14 @@ import json
 import numpy as np
 import pandas as pd
 
-from . import comparative_stats, config, historical_rates, historical_stats, utils
+from . import (
+    clustering_participantes,
+    comparative_stats,
+    config,
+    historical_rates,
+    historical_stats,
+    utils,
+)
 
 KEY = config.STUDENT_KEY
 
@@ -247,6 +254,11 @@ def build_cube(verbose: bool = True) -> dict:
         "historial_rendimiento", columns=["CODIGO_ESTUDIANTE", "PERIODO"]
     )
     out["historico_tasas"] = historical_rates.compute_historical_rates(df, rend)
+
+    # Caracterización por clustering (K-means) de los participantes de pregrado
+    # (fuente única; mismo patrón que el comparativo, RF-1/RF-2). Recibe el df ya
+    # cargado para no releer el parquet.
+    out["clustering"] = clustering_participantes.compute_clustering(df)
 
     if verbose:
         print(f"Celdas del cubo: {len(rows):,} | "
