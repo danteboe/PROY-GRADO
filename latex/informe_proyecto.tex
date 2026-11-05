@@ -879,6 +879,112 @@ de estudiantes activos ese año, por estrato.}
 \input{tablas/historico_tasas_estrato.tex}
 
 % ======================================================================
+\section{Caracterización de los participantes mediante clustering (K-means)}
+\label{sec:clustering}
+% ======================================================================
+Para caracterizar internamente a quienes \emph{sí} participan en
+internacionalización se aplicó un agrupamiento no supervisado \textbf{K-means}
+(\texttt{scikit-learn}, \emph{k-means++}, distancia euclídea) sobre los participantes
+de \textbf{pregrado} con datos completos. El modelo usa \textbf{cinco rasgos}
+académicos y demográficos ---PGA (último), percentil de PGA en el programa, semestre
+de avance, proporción de créditos aprobados y edad--- estandarizados con
+\texttt{StandardScaler} (media 0, desviación 1), de modo que todas pesen por igual.
+Se barrió el número de grupos en el rango $k=2\ldots10$ combinando el \textbf{método
+del codo} (inercia intra-cluster) con el \textbf{coeficiente de silueta} (estimado
+por submuestreo determinista), y se eligió el $k$ con la regla documentada (menor $k$
+con silueta cercana al máximo y sin grupos degenerados). El cálculo vive en el módulo
+\texttt{src.clustering\_participantes} y es la \textbf{fuente única} que alimenta por
+igual a este informe y al dashboard: nadie recalcula K-means en JavaScript ni en
+\LaTeX{}, y el redondeo se aplica una sola vez en Python. La narrativa que sigue
+---con todas sus cifras--- se interpola automáticamente desde ese mismo cálculo.
+
+\input{tablas/clustering_narrativa.tex}
+
+\subsection{Selección del número de grupos}
+Las Figuras~\ref{fig:clustering-codo} y~\ref{fig:clustering-silueta} muestran,
+respectivamente, la inercia y la silueta media según $k$, con el $k$ elegido marcado.
+La silueta es una estimación por submuestreo determinista, no el valor exacto.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{fig_clustering_codo.png}
+\caption{Método del codo: inercia intra-cluster según el número de grupos $k$. La
+línea discontinua marca el $k$ seleccionado.}
+\label{fig:clustering-codo}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{fig_clustering_silueta.png}
+\caption{Coeficiente de silueta medio según el número de grupos $k$ (estimado por
+submuestreo determinista). La línea discontinua marca el $k$ seleccionado.}
+\label{fig:clustering-silueta}
+\end{figure}
+
+\subsection{Firmas y perfil de los grupos}
+El mapa de calor de la Figura~\ref{fig:clustering-heatmap} resume la \emph{firma} de
+cada grupo: el valor estandarizado ($z$) de su centroide por rasgo, en una rampa
+divergente centrada en $0$ (la media global). La Tabla~\ref{tab:clustering-perfiles}
+traduce esos centroides a unidades originales, junto al tamaño y peso relativo de
+cada grupo.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{fig_clustering_heatmap.png}
+\caption{Firmas de los centroides ($z$) por grupo y rasgo. Valores positivos
+(azules) indican rasgos por encima de la media global; negativos (rojos), por
+debajo.}
+\label{fig:clustering-heatmap}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Perfil de cada grupo: tamaño, peso relativo y centroide en unidades
+originales por los cinco rasgos de agrupamiento.}
+\label{tab:clustering-perfiles}
+\small
+\input{tablas/clustering_perfiles.tex}
+\end{table}
+
+La Figura~\ref{fig:clustering-perfil-externo} contrasta los grupos con variables
+\textbf{no} usadas en el agrupamiento (composición por género y media de ICFES de
+matemáticas). Los ejes de los componentes ICFES usan su rango observado ---no una
+escala $0$--$100$ arbitraria---, y las medias se acompañan de su cobertura.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_clustering_perfil_externo.png}
+\caption{Perfilado externo de los grupos con variables ajenas al agrupamiento:
+composición por género y media de ICFES de matemáticas (eje en el rango observado,
+con cobertura anotada).}
+\label{fig:clustering-perfil-externo}
+\end{figure}
+
+El perfilado numérico detallado (ICFES y estrato) aparece en la
+Tabla~\ref{tab:clustering-icfes-estrato} y la composición por facultad de cada grupo
+en la Tabla~\ref{tab:clustering-categorico}.
+
+\begin{table}[H]
+\centering
+\caption{Perfil de ICFES y estrato por grupo: media sobre quienes tienen dato, con
+el número de casos con dato y la cobertura correspondiente.}
+\label{tab:clustering-icfes-estrato}
+\small
+\input{tablas/clustering_perfil_icfes_estrato.tex}
+\end{table}
+
+\input{tablas/clustering_perfil_categorico.tex}
+
+\textbf{Encuadre y salvaguardas.} (i)~Los grupos son \textbf{descriptivos}: resumen
+asociaciones observadas entre rasgos, \textbf{no} son categorías administrativas ni
+implican relaciones causales. (ii)~Todas las cifras son \textbf{agregados} (centroides,
+medias, conteos y porcentajes); nunca se publica la asignación de grupo de un
+estudiante, y las categorías con $n<30$ se agregan en ``Otras'' por privacidad
+(Ley~1581). (iii)~Las medias de ICFES y de estrato tienen \textbf{cobertura parcial} y
+deben leerse junto a su porcentaje de dato disponible; en particular, la media de
+estrato es un \textbf{indicador ordinal} orientativo, no una magnitud de intervalo.
+
+% ======================================================================
 \section{Reorientación del alcance: foco descriptivo}
 \label{sec:reorientacion}
 % ======================================================================
