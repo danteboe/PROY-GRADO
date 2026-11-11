@@ -1050,7 +1050,7 @@ dos piezas:
     \item \textbf{Capa de presentación (React + Vite).} Una aplicación de página
     única construida con React y la biblioteca de gráficos \emph{Recharts},
     elegida por su bajo peso e interactividad nativa (\emph{hover}, \emph{tooltips}).
-    El \emph{bundle} de producción pesa $\sim 169$~KB comprimido, acorde con el
+    El \emph{bundle} de producción pesa $\sim 185$~KB comprimido, acorde con el
     requisito de una herramienta ligera. El navegador recalcula todos los
     indicadores sumando las celdas del cubo que satisfacen los filtros activos.
 \end{enumerate}
@@ -1074,8 +1074,11 @@ El tablero expone dos tipos de filtros con \emph{cross-filtering} en vivo:
     experiencia de internacionalización} (participantes) ---no el total--- bajo el
     resto de filtros activos, de modo que el usuario vea de inmediato dónde se
     concentra la movilidad.
-    \item \textbf{Cuatro \emph{sliders} de rango} para las variables numéricas
-    (PGA, semestre de avance, puntaje ICFES y edad). Cada \emph{slider} tiene doble
+    \item \textbf{Siete \emph{sliders} de rango} para las variables numéricas: los
+    cuatro originales (PGA, semestre de avance, puntaje ICFES total y edad) más tres
+    \emph{sliders} de ICFES por materia ---matemáticas, lectura crítica e inglés---,
+    que permiten acotar la selección por el desempeño en cada prueba individual.
+    Cada \emph{slider} tiene doble
     manija y, además, \textbf{campos de entrada manual en ambos extremos}: el
     usuario puede escribir un valor exacto, que se valida contra el rango real de la
     variable y se ajusta al paso de la rejilla. Un control adicional permite incluir
@@ -1102,9 +1105,34 @@ El tablero se organiza alrededor de las preguntas analíticas
     cada categoría, qué porcentaje de cada grupo cae en ella, revelando en qué se
     diferencian ambos grupos.
     \item Las distribuciones numéricas combinan barras (número de estudiantes) con
-    una línea de tasa de participación en doble eje.
+    una línea de tasa de participación en doble eje; esa línea usa un color de alto
+    contraste que la distingue de las barras (incluida la distribución de edad, en
+    ámbar) y se acompaña de una \textbf{línea punteada de \emph{baseline}} que marca
+    la tasa promedio de la selección, de modo que cada tramo se lea frente a esa
+    referencia y no en abstracto.
     \item Se conservan los \emph{tooltips} de \emph{hover} con el detalle, y el clic
     sobre una barra de facultad o programa aplica el filtro correspondiente.
+    \item \textbf{Botones de ayuda contextual} (ícono ``?'' enfocable y operable por
+    teclado) en las vistas analíticas de la pestaña \emph{Insights} ---en particular
+    la $d$ de Cohen y la regresión logística (\emph{odds ratios})--- explican, en
+    lenguaje llano, qué mide cada indicador y cómo leerlo (magnitud del efecto, o que
+    un $OR>1$ se asocia con mayor participación y un intervalo que cruza $1$ es no
+    concluyente), siempre en clave de \emph{asociación} y no de causa.
+    \item Los \emph{boxplots} comparativos permiten \textbf{\emph{hover} por caja}
+    con los cinco números del resumen (bigote inferior, Q1, mediana, Q3 y bigote
+    superior) y el $n$ del grupo; además, las variables con mínimo físico cero
+    (opciones inscritas, créditos aprobados y semestre de avance) fijan el eje en $0$
+    y ya no muestran valores negativos espurios.
+    \item El \emph{scatter} de oportunidad usa \textbf{escala logarítmica} en el eje
+    de estudiantes para separar las facultades que antes se apiñaban, y la selección
+    del número de grupos del \emph{clustering} muestra el eje $k=2\ldots10$ completo.
+    \item Un \textbf{\emph{scatter} 2D de los grupos del \emph{clustering}} permite
+    elegir qué rasgo va en cada eje (entre PGA, percentil de PGA, semestre de avance,
+    proporción de créditos aprobados y edad) y colorea cada punto por su grupo, para
+    ver visualmente la separación entre perfiles. Se dibuja sobre una
+    \textbf{submuestra determinista de a lo sumo $3\,000$ participantes de pregrado}
+    del agrupamiento ---no sobre microdatos individuales---, en coherencia con la
+    minimización de datos (Ley~1581 de 2012).
 \end{itemize}
 
 \begin{table}[H]
@@ -1124,13 +1152,13 @@ Distribución de PGA / avance / ICFES / edad & Barras (estudiantes) + línea de 
 Ranking por facultad & Participación por facultad; clic para filtrar. & PA2 \\
 Ranking por programa & Top programas de la selección; clic para filtrar. & PA2 \\
 Modalidades & Composición por tipo de experiencia. & PA3 \\
-Modalidades en el tiempo & Área apilada por modalidad desde 2010. & PA3 \\
+Modalidades en el tiempo & Área apilada por modalidad y año (Explorador, filtrable). & PA3 \\
 Ranking por tipo de admisión / género / nivel & Participación por esas dimensiones. & PA6 \\
 Matriz de oportunidad & Volumen vs.\ tasa por facultad (burbuja = no participantes). & PN1 \\
 Mapa de calor facultad~$\times$~estrato & Tasa de participación cruzada. & PN2 \\
 Modalidad por facultad & Composición (\%) de modalidad por facultad. & PN3 \\
 Estacionalidad & Eventos por año y semestre (1.\textordmasculine{} vs 2.\textordmasculine{}). & PN4 \\
-Resultado de la experiencia & \% de experiencias aprobadas / no terminadas. & PN5 \\
+Resultado de la experiencia & \% de experiencias aprobadas / no terminadas (Explorador, filtrable). & PN5 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1201,15 +1229,28 @@ Las decisiones y su justificación se resumen a continuación.
     usuario. Además, las observaciones con estrato \emph{``Sin dato''} ---un valor
     legítimo del catálogo, distinto del centinela de dato faltante numérico--- se
     muestran en su propia columna del eje de estratos en lugar de desaparecer.
-    \item \textbf{Vistas que permanecen como histórico global.} Las vistas de
-    \emph{modalidades en el tiempo}, \emph{modalidad por facultad},
-    \emph{estacionalidad} y \emph{resultado de la experiencia} se mantienen como
-    \emph{vista histórica global} y no responden a los filtros, lo que se señala de
-    forma explícita en su subtítulo. La razón es que dependen de datos a nivel de
-    \emph{evento} de movilidad que no forman parte del cubo agregado a nivel de
-    estudiante; recalcularlas desde la selección implicaría exponer o reconstruir
-    microdatos de eventos, en tensión con la minimización de datos y con la
-    coherencia estadística del resto del tablero.
+    \item \textbf{Composición de modalidades por año y resultado de la experiencia,
+    ahora filtrables en el Explorador.} Las vistas de \emph{composición de
+    modalidades por año} y de \emph{resultado de la experiencia} se trasladaron a la
+    pestaña \emph{Explorador} y \textbf{responden a los filtros}: ambas se recalculan
+    en el cliente a partir de la selección activa usando las dimensiones del cubo a
+    nivel de \emph{estudiante}. La composición de modalidades por año se deriva
+    cruzando el año del primer evento (\texttt{anio\_mov}) con la modalidad principal
+    (\texttt{modalidad}) del estudiante, y el resultado de la experiencia emplea la
+    nueva dimensión categórica \emph{resultado} ---el resultado académico del primer
+    evento de movilidad de cada estudiante. En ambos casos el subtítulo aclara que la
+    unidad es el \emph{estudiante} (modalidad principal y año/resultado de su primer
+    evento), no el evento, de modo que no se reconstruyen ni exponen microdatos a
+    nivel de evento. Las vistas que sí dependen de datos a nivel de evento
+    ---\emph{estacionalidad} y \emph{modalidad por facultad}--- permanecen como
+    \emph{histórico global} en la pestaña \emph{Insights} y lo señalan en su
+    subtítulo.
+    \item \textbf{Ausencia de datos de destino del convenio.} Las fuentes
+    disponibles no incluyen el \emph{destino} de la movilidad (país o institución de
+    acogida), por lo que el tablero no ofrece una vista geográfica de destino; el
+    origen geográfico del estudiante existe pero no se expone como vista por decisión
+    de alcance. Capturar el destino del convenio sería un siguiente paso valioso para
+    enriquecer el análisis, y así se indica en una nota visible del Explorador.
     \item \textbf{Accesibilidad transversal.} Los controles de rango llevan
     \texttt{aria-label} descriptivos (``Año desde'' / ``Año hasta'' y los extremos de
     cada \emph{slider} numérico); las acciones de filtro son botones enfocables y
@@ -1222,11 +1263,15 @@ Las decisiones y su justificación se resumen a continuación.
     filtrable} de lo \emph{global y narrativo}. La pestaña \emph{Explorador} reúne
     todo lo que responde a la selección del usuario: los KPI, la serie temporal, los
     perfiles de participantes frente a no participantes, las distribuciones
-    numéricas, los \emph{rankings} por categoría y las vistas de \emph{oportunidad} y
+    numéricas, los \emph{rankings} por categoría, las vistas de \emph{oportunidad} y
     \emph{equidad} (matriz de oportunidad por facultad y mapa de calor
-    facultad~$\times$~estrato). La pestaña \emph{Insights} agrupa las vistas de
-    histórico global ---modalidades en el tiempo, modalidad por facultad,
-    estacionalidad y resultado de la experiencia--- que no dependen de los filtros.
+    facultad~$\times$~estrato) y, tras la última iteración, la \emph{composición de
+    modalidades por año} y el \emph{resultado de la experiencia}, que ahora se
+    recalculan con la selección. La pestaña \emph{Insights} agrupa las vistas de
+    histórico global ---modalidad por facultad y estacionalidad--- que dependen de
+    datos a nivel de evento y no de los filtros, junto con las vistas analíticas de
+    perfilamiento (comparación de grupos, $d$ de Cohen, regresión logística y
+    \emph{clustering}).
     La motivación es triple: separar lo interactivo de lo global, evitar que el
     usuario espere que las vistas globales reaccionen a los filtros (una fuente de
     confusión en la versión anterior, donde se señalaba con una coletilla en cada
