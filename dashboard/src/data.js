@@ -20,11 +20,16 @@ export const DIM_LABELS = {
   avance: 'Semestre de avance',
   icfes: 'Puntaje ICFES',
   edad: 'Edad',
+  icfes_mate: 'ICFES Matemáticas',
+  icfes_lectura: 'ICFES Lectura crítica',
+  icfes_ingles: 'ICFES Inglés',
+  resultado: 'Resultado de la experiencia',
 }
 
 // Orden sugerido de categorías para dimensiones ordinales.
 const ORDINAL_ORDER = {
   estrato: ['1', '2', '3', '4', '5', '6', 'Sin dato'],
+  resultado: ['APROBADO', 'NO TERMINADO', 'REPROBADO', 'RETIRADO', 'PENDIENTE', 'INCOMPLETO', 'SIN INFORMACION', 'No participa'],
 }
 
 export async function loadCube() {
@@ -111,11 +116,15 @@ export function orderedCategories(dim, cats) {
 
 // filters: {
 //   cat: { dim: Set<catIndex> },
-//   num: { dim: { min, max, includeNA } }  // min/max en unidades INTERNAS del cubo
+//   num: { dim: { min, max, includeNA } }  // min/max en unidades REALES (las emite RangeSlider)
 // }
 // Devuelve las filas que satisfacen todos los filtros activos.
 // `exceptDim` excluye una dimensión (para el conteo contextual de ese filtro).
-export function applyFilters(rows, filters, exceptDim = null, naSentinel = -1) {
+// `numMeta` (cube.numMeta) se usa para convertir filters.num.{min,max}, que vienen
+// en unidades REALES, a las unidades INTERNAS del cubo (entero = real * scale) antes
+// de comparar contra row[dim] (entero interno). Si numMeta es null, no se convierte
+// (compatibilidad defensiva: se asume que min/max ya están en unidades internas).
+export function applyFilters(rows, filters, exceptDim = null, naSentinel = -1, numMeta = null) {
   const cat = filters.cat || {}
   const num = filters.num || {}
   const activeCat = Object.entries(cat).filter(
@@ -130,7 +139,10 @@ export function applyFilters(rows, filters, exceptDim = null, naSentinel = -1) {
     for (const [dim, r] of activeNum) {
       const v = row[dim]
       if (v === naSentinel) { if (!r.includeNA) return false; else continue }
-      if (v < r.min || v > r.max) return false
+      const sc = numMeta && numMeta[dim] ? numMeta[dim].scale : 1
+      const lo = Math.round(r.min * sc)
+      const hi = Math.round(r.max * sc)
+      if (v < lo || v > hi) return false
     }
     return true
   })

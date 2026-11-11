@@ -1029,13 +1029,24 @@ dos piezas:
     \textbf{cubo pre-agregado} y lo exporta como un único archivo JSON
     (\texttt{dashboard/public/data.json}). Cada fila del cubo es una combinación
     única de dimensiones y lleva el número de estudiantes y de participantes. El
-    cubo combina \textbf{nueve dimensiones categóricas} con \textbf{cuatro
-    dimensiones numéricas discretizadas} (PGA, semestre de avance, puntaje ICFES y
-    edad), estas últimas guardadas como enteros en una rejilla fina (p.\,ej. PGA en
-    pasos de $0{,}25$) para habilitar \emph{sliders} de rango sin perder la
-    capacidad de \emph{cross-filtering} exacto. El cubo resultante tiene
-    $85\,221$ celdas y pesa $3{,}5$~MB, que se reducen a $\sim 0{,}34$~MB al
-    comprimir con gzip (muy ligero en la transferencia).
+    cubo combina \textbf{diez dimensiones categóricas} ---incluida una dimensión
+    \emph{resultado} de la experiencia, derivada del resultado académico del primer
+    evento de movilidad de cada estudiante--- con \textbf{siete dimensiones
+    numéricas discretizadas} (PGA, semestre de avance, puntaje ICFES total, edad y
+    el puntaje ICFES por materia: matemáticas, lectura crítica e inglés), estas
+    últimas guardadas como enteros en una rejilla fina (p.\,ej. PGA en pasos de
+    $0{,}25$; ICFES por materia en pasos de $10$~puntos) para habilitar
+    \emph{sliders} de rango sin perder la capacidad de \emph{cross-filtering}
+    exacto. El cubo resultante tiene $131\,078$ celdas y pesa $\sim 7{,}3$~MB, que
+    se reducen a $\sim 0{,}63$~MB al comprimir con gzip. El crecimiento frente a la
+    versión inicial (nueve dimensiones categóricas y cuatro numéricas, $\sim
+    3{,}5$~MB) proviene de la explosión combinatoria al añadir las tres dimensiones
+    de ICFES por materia y la dimensión \emph{resultado}; se considera aceptable
+    porque lo relevante en la transferencia es el tamaño comprimido ($0{,}63$~MB,
+    muy ligero) y un JSON de $\sim 7{,}3$~MB se analiza sin dificultad en el
+    navegador. El paso de $10$~puntos en las dimensiones ICFES por materia es un
+    compromiso deliberado para acotar ese crecimiento conservando una granularidad
+    útil en los \emph{sliders}.
     \item \textbf{Capa de presentación (React + Vite).} Una aplicación de página
     única construida con React y la biblioteca de gráficos \emph{Recharts},
     elegida por su bajo peso e interactividad nativa (\emph{hover}, \emph{tooltips}).

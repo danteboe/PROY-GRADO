@@ -13,13 +13,21 @@ indicador sumando las celdas que satisfacen los filtros activos.
 El cubo incluye dos tipos de dimensiones:
 
 * **Categóricas** (nivel, facultad, programa, género, estrato, tipo de admisión,
-  estado académico, año de movilidad, modalidad): filtros de selección múltiple.
-* **Numéricas discretizadas** (PGA, semestre de avance, puntaje ICFES, edad):
-  guardadas como enteros en una rejilla fina (p. ej. PGA en pasos de 0.25) para
-  habilitar **sliders de rango** en la interfaz. El valor centinela ``-1``
-  representa "sin dato". La rejilla fina permite que el cross-filtering entre
-  sliders y filtros categóricos sea exacto manteniendo el archivo pequeño
-  (~3.5 MB sin comprimir, ~0.34 MB con gzip).
+  estado académico, año de movilidad, modalidad, resultado de la experiencia):
+  filtros de selección múltiple.
+* **Numéricas discretizadas** (PGA, semestre de avance, puntaje ICFES total, edad,
+  e ICFES por materia: matemáticas, lectura crítica e inglés): guardadas como
+  enteros en una rejilla fina (p. ej. PGA en pasos de 0.25; ICFES por materia en
+  pasos de 10) para habilitar **sliders de rango** en la interfaz. El valor
+  centinela ``-1`` representa "sin dato".
+
+Tamaño del cubo (tras añadir las 3 dims ICFES por materia y la dim 'resultado'):
+~131 mil celdas, ~7.3 MB sin comprimir y ~0.63 MB con gzip. El crecimiento frente
+a la versión anterior (~3.5 MB) proviene de la explosión combinatoria de las dims
+nuevas. Se considera aceptable: lo relevante en transferencia es el gzip (0.63 MB),
+que sirve el servidor estático, y un JSON de ~7.3 MB se parsea sin problema en el
+cliente. El paso 10 de las dims ICFES por materia es un compromiso deliberado para
+limitar ese crecimiento manteniendo granularidad útil (ver NUM_DIMS).
 
 Esto respeta el principio de minimización de datos (no se publican registros
 individuales).
@@ -51,7 +59,7 @@ KEY = config.STUDENT_KEY
 # Dimensiones categóricas del cubo (filtros de selección múltiple).
 CAT_DIMS = [
     "nivel", "facultad", "programa", "genero", "estrato",
-    "tipo_admision", "estado", "anio_mov", "modalidad",
+    "tipo_admision", "estado", "anio_mov", "modalidad", "resultado",
 ]
 
 # Dimensiones numéricas discretizadas (sliders de rango). Para cada una se define
@@ -65,6 +73,11 @@ NUM_DIMS = {
     "avance": dict(scale=1,   step=2,    lo=0,    hi=16,    dec=0, unit="sem"),
     "icfes":  dict(scale=1,   step=50,   lo=100,  hi=500,   dec=0, unit="pts"),
     "edad":   dict(scale=1,   step=5,    lo=15,   hi=45,    dec=0, unit="años"),
+    # ICFES por materia (paso 10 para limitar el crecimiento del cubo al añadir 3
+    # dims). No se incluyen ciencias naturales/sociales: no existen en el parquet.
+    "icfes_mate":    dict(scale=1, step=10, lo=0, hi=100, dec=0, unit="pts"),
+    "icfes_lectura": dict(scale=1, step=10, lo=0, hi=100, dec=0, unit="pts"),
+    "icfes_ingles":  dict(scale=1, step=10, lo=0, hi=100, dec=0, unit="pts"),
 }
 
 
@@ -106,11 +119,26 @@ def build_cube(verbose: bool = True) -> dict:
     anio = df["PRIMER_ANIO_MOVILIDAD"]
     d["anio_mov"] = np.where(anio.notna(), anio.fillna(0).astype(int).astype(str), "N/A")
 
+    # Dimensión 'resultado': resultado académico del PRIMER evento de movilidad de
+    # cada estudiante. Se toma del parquet de eventos (KEY, PERIODO, RESULTADO),
+    # ordenando por PERIODO ascendente y quedándose con el primer evento por KEY.
+    # Quienes no tienen evento quedan como 'No participa'.
+    eventos = pd.read_parquet(config.MOBILITY_EVENTS)
+    primer_evento = (eventos.sort_values("PERIODO")
+                            .groupby(KEY, as_index=True)
+                            .head(1)
+                            .set_index(KEY)["RESULTADO"])
+    d["resultado"] = (df[KEY].map(primer_evento)
+                        .fillna("No participa").astype(str).values)
+
     # Dimensiones numéricas discretizadas (enteros).
     d["pga"] = _discretize_pga(df["PGA_ULTIMO"])
     d["avance"] = _discretize_step(df["SEMESTRE_AVANCE"], 2, 0, 16)
     d["icfes"] = _discretize_step(df["ICFES_PUNTAJE_TOTAL"], 50, 100, 500)
     d["edad"] = _discretize_step(df["EDAD"], 5, 15, 45)
+    d["icfes_mate"] = _discretize_step(df["ICFES_MATEMATICAS"], 10, 0, 100)
+    d["icfes_lectura"] = _discretize_step(df["ICFES_LECTURA_CRITICA"], 10, 0, 100)
+    d["icfes_ingles"] = _discretize_step(df["ICFES_INGLES"], 10, 0, 100)
 
     num_cols = list(NUM_DIMS)
     dims = CAT_DIMS + num_cols
@@ -151,7 +179,7 @@ def build_cube(verbose: bool = True) -> dict:
             "unit": spec["unit"],
         }
 
-    eventos = pd.read_parquet(config.MOBILITY_EVENTS)
+    # `eventos` ya se cargó arriba (para la dim 'resultado').
     eventos_modalidad_anio = (eventos[eventos["ANIO"] >= 2010]
                               .groupby(["ANIO", "MODALIDAD"]).size()
                               .reset_index(name="n"))

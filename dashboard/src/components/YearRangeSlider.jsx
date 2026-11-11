@@ -49,18 +49,27 @@ export default function YearRangeSlider({ label, codebook, selected, onChange, o
     return { desde: lo, hasta: hi, includeNA: na }
   }, [selected, nums, naIdx, minYear, maxYear])
 
-  const active = desde > minYear || hasta < maxYear || !includeNA
+  // Un subrango está activo cuando NO cubre todo [minYear, maxYear]. Con un
+  // subrango activo se excluyen los N/A (ver emit) y la casilla se deshabilita.
+  const subrangoActivo = desde > minYear || hasta < maxYear
+  const active = subrangoActivo || !includeNA
 
   // Construye y emite el Set de índices para un rango y preferencia de N/A dados.
   // Si el rango cubre todo y se incluye N/A, emite un Set vacío (= sin filtro).
+  // Si el rango es un SUBRANGO activo (no cubre [minYear, maxYear]) se excluye
+  // SIEMPRE el N/A: filtrar por un rango de años solo tiene sentido sobre los
+  // participantes cuyo primer evento cae en el rango; incluir a los no
+  // participantes (N/A) contradice esa intención (BUG B).
   const emit = (lo, hi, na) => {
     if (lo <= minYear && hi >= maxYear && na) {
       onChange(new Set())
       return
     }
+    const subrangoActivo = lo > minYear || hi < maxYear
+    const incluirNA = subrangoActivo ? false : na
     const set = new Set()
     for (const d of nums) if (d.year >= lo && d.year <= hi) set.add(d.idx)
-    if (na) for (const i of naIdx) set.add(i)
+    if (incluirNA) for (const i of naIdx) set.add(i)
     onChange(set)
   }
 
@@ -108,10 +117,18 @@ export default function YearRangeSlider({ label, codebook, selected, onChange, o
       </div>
 
       <label className="na-toggle">
-        <input type="checkbox" checked={includeNA}
+        <input type="checkbox" checked={subrangoActivo ? false : includeNA}
+               disabled={subrangoActivo}
                onChange={(e) => emit(desde, hasta, e.target.checked)} />
         Incluir sin año/N/A
       </label>
+
+      {subrangoActivo && (
+        <p className="slider-help">
+          Con un rango de años activo solo se muestran participantes cuyo primer
+          evento de movilidad cae en el rango; se excluyen los no participantes (N/A).
+        </p>
+      )}
     </div>
   )
 }

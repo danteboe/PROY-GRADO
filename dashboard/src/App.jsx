@@ -131,7 +131,7 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
   const countsByDim = useMemo(() => {
     const result = {}
     for (const dim of CAT_FILTER_DIMS) {
-      const rows = applyFilters(cube.rows, filters, dim, cube.naSentinel)
+      const rows = applyFilters(cube.rows, filters, dim, cube.naSentinel, cube.numMeta)
       const m = new Map()
       for (const r of rows) {
         const c = m.get(r[dim]) || { n: 0, part: 0 }
@@ -207,7 +207,7 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
     if (el) el.focus()
   }
   const filtered = useMemo(
-    () => applyFilters(cube.rows, filters, null, cube.naSentinel),
+    () => applyFilters(cube.rows, filters, null, cube.naSentinel, cube.numMeta),
     [cube, filters],
   )
   const t = useMemo(() => totals(filtered), [filtered])

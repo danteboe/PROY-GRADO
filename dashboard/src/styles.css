@@ -356,6 +356,14 @@ body {
   cursor: pointer;
 }
 .na-toggle input { accent-color: var(--accent); }
+.na-toggle input:disabled { cursor: not-allowed; }
+
+.slider-help {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
 
 /* ---------- Slider de rango temporal (año de movilidad) ---------- */
 .year-slider { margin-bottom: 4px; }

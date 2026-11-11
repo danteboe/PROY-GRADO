@@ -476,7 +476,7 @@ def compute_clustering(df_or_path=None) -> dict:
         meta["aviso_k"] = None
         meta["orden_clusters"] = None
         meta["escalas_perfil"] = {}
-        out = {"meta": meta, "curvas": [], "clusters": []}
+        out = {"meta": meta, "curvas": [], "clusters": [], "scatter_muestra": []}
         out = comparative_stats._a_nativo(out)
         out["narrativa"] = construir_narrativa_clustering(out)
         return out
@@ -661,7 +661,31 @@ def compute_clustering(df_or_path=None) -> dict:
             "perfil_categorico": _perfil_categorico_cluster(sub_cluster, fac_map),
         })
 
-    out = {"meta": meta, "curvas": curvas_pub, "clusters": clusters}
+    # Submuestra determinista para el scatter del dashboard (<=3000 filas de
+    # sub_ok). Por privacidad solo se emiten las 5 features de clustering en
+    # unidades originales (redondeadas con _redondear) y el id de cluster canónico;
+    # sin identificadores. labels está alineado por posición con sub_ok (misma
+    # máscara y orden), y sub_ok ya fue reseteado de índice arriba.
+    rng = np.random.default_rng(RANDOM_SEED)
+    n_scatter = min(3000, n_usados)
+    idx_muestra = np.sort(rng.choice(n_usados, size=n_scatter, replace=False))
+    scatter_muestra = []
+    for i in idx_muestra:
+        fila = sub_ok.iloc[i]
+        cluster_id = remap[int(labels[i])]
+        scatter_muestra.append({
+            "cluster": int(cluster_id),
+            "PGA_ULTIMO": _redondear("PGA_ULTIMO", fila["PGA_ULTIMO"]),
+            "PERCENTIL_PGA_PROGRAMA": _redondear(
+                "PERCENTIL_PGA_PROGRAMA", fila["PERCENTIL_PGA_PROGRAMA"]),
+            "SEMESTRE_AVANCE": _redondear("SEMESTRE_AVANCE", fila["SEMESTRE_AVANCE"]),
+            "PCT_CREDITOS_APROBADOS": _redondear(
+                "PCT_CREDITOS_APROBADOS", fila["PCT_CREDITOS_APROBADOS"]),
+            "EDAD": _redondear("EDAD", fila["EDAD"]),
+        })
+
+    out = {"meta": meta, "curvas": curvas_pub, "clusters": clusters,
+           "scatter_muestra": scatter_muestra}
     # Saneamiento final: numpy -> nativo, NaN/inf -> None antes de serializar.
     out = comparative_stats._a_nativo(out)
     # Narrativa con cifras interpoladas (M2), tras el saneamiento.
