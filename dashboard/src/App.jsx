@@ -238,26 +238,55 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       .sort((a, b) => a.anio - b.anio)
   }, [filtered, cube])
 
-  // Composición de modalidades en el tiempo (histórico global, del cubo).
+  // Lista de modalidades del histórico global (del cubo), usada por el gráfico de
+  // modalidad por facultad (StackedByFaculty) en Insights.
   const modalities = useMemo(
     () => [...new Set(cube.eventosModalidadAnio.map((r) => r.modalidad))],
     [cube],
   )
-  const modalidadTemporal = useMemo(() => {
+
+  // Composición de modalidades por año DERIVADA de la selección (Explorador):
+  // pivotea anio_mov x modalidad sobre `part` (cuenta ESTUDIANTES: modalidad
+  // principal y año del primer evento, no eventos). Excluye el año 'N/A'/'Sin dato'
+  // y la categoría de modalidad 'No participa'. Reacciona a todos los filtros.
+  const modalidadesSel = useMemo(() => {
+    const cats = cube.codebooks.modalidad
+    return cats
+      .map((label, idx) => ({ label, idx }))
+      .filter((m) => m.label !== 'No participa')
+  }, [cube])
+  const modalidadTemporalSel = useMemo(() => {
+    const anios = cube.codebooks.anio_mov
+    const mods = cube.codebooks.modalidad
     const byAnio = new Map()
-    for (const r of cube.eventosModalidadAnio) {
-      const o = byAnio.get(r.anio) || { anio: r.anio }
-      o[r.modalidad] = r.n
-      byAnio.set(r.anio, o)
+    for (const r of filtered) {
+      if (!r.part) continue
+      const anioLabel = anios[r.anio_mov]
+      if (anioLabel == null || anioLabel === 'N/A' || anioLabel === 'Sin dato') continue
+      const modLabel = mods[r.modalidad]
+      if (modLabel === 'No participa') continue
+      const anioNum = Number(anioLabel)
+      if (!Number.isFinite(anioNum)) continue
+      const o = byAnio.get(anioNum) || { anio: anioNum }
+      o[modLabel] = (o[modLabel] || 0) + r.part
+      byAnio.set(anioNum, o)
     }
-    // Rellenar con 0 las modalidades ausentes en cada año: sin esto, el área
-    // apilada interpreta los valores faltantes como huecos y se ve distorsionada.
     const out = [...byAnio.values()].sort((a, b) => a.anio - b.anio)
     for (const row of out) {
-      for (const m of modalities) if (row[m] == null) row[m] = 0
+      for (const m of modalidadesSel) if (row[m.label] == null) row[m.label] = 0
     }
     return out
-  }, [cube, modalities])
+  }, [filtered, cube, modalidadesSel])
+
+  // Resultado de la experiencia DERIVADO de la selección (Explorador): agrega la
+  // dim categórica 'resultado' (resultado del PRIMER evento por estudiante) y
+  // excluye 'No participa'. Reacciona a todos los filtros.
+  const resultadoSel = useMemo(
+    () => aggregateBy(filtered, 'resultado', cube.codebooks)
+      .filter((d) => d.label !== 'No participa')
+      .map((d) => ({ resultado: d.label, n: d.n })),
+    [filtered, cube],
+  )
 
   // ---- Preguntas de negocio recalculadas en cliente desde la selección ----
   // Matriz de oportunidad por facultad (n, part, noPart, tasa) y mapa de calor
@@ -533,11 +562,28 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
         data={heatmapSel}
       />
 
+      {/* Modalidad por año y Resultado, movidos desde Insights al Explorador para
+          que respondan a los filtros (item 15 de FEAT-002). */}
+      <div className="section-title">Modalidad y resultado (según la selección)</div>
+      <ModalityArea
+        title="Composición de modalidades por año"
+        subtitle="Según la selección. Cuenta ESTUDIANTES por su modalidad principal y el año de su primer evento de movilidad (no eventos). Excluye el año sin dato."
+        data={modalidadTemporalSel}
+        modalities={modalidadesSel.map((m) => m.label)}
+      />
+      <div className="grid">
+        <DonutResultado resultado={resultadoSel} />
+      </div>
+
       <p className="footnote">
         Fuente: registros académicos anonimizados de la Universidad de los Andes. La señal de
         internacionalización se deriva de cursos de movilidad en la historia académica. Los datos
         se presentan agregados; no se exponen registros individuales (principio de minimización de
         datos, Ley 1581 de 2012). Las asociaciones mostradas no implican causalidad.
+        <br />
+        Nota: no se dispone de datos del <strong>destino</strong> del convenio de movilidad
+        (país o institución de acogida), por lo que el Explorador no incluye un filtro ni un
+        ranking geográfico. Capturar esa información sería un siguiente paso valioso.
       </p>
       </section>
 
@@ -631,14 +677,6 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
 
       <div className="section-title">Panorama histórico de la movilidad</div>
 
-      <div className="section-title">Modalidades en el tiempo</div>
-      <ModalityArea
-        title="Composición de modalidades por año"
-        subtitle="Eventos por modalidad desde 2010."
-        data={modalidadTemporal}
-        modalities={modalities}
-      />
-
       <div className="section-title">
         ¿Qué modalidad prefiere cada facultad?
       </div>
@@ -650,7 +688,7 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       />
 
       <div className="section-title">
-        Estacionalidad y resultado de la experiencia
+        Estacionalidad de la experiencia
       </div>
       <div className="grid">
         <SeasonBars
@@ -658,8 +696,12 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
           subtitle="Eventos por año, separando primer y segundo semestre."
           data={seasonData}
         />
-        <DonutResultado resultado={cube.resultadoMov} />
       </div>
+      <p className="card-sub" style={{ marginTop: 8 }}>
+        La composición de modalidades por año y el resultado de la experiencia se
+        movieron a la pestaña <strong>Explorador</strong>, donde ahora responden a los
+        filtros.
+      </p>
       </section>
     </main>
   )

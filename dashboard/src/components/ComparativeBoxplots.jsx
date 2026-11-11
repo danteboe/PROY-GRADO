@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  ComposedChart, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ComposedChart, XAxis, YAxis, ResponsiveContainer,
   CartesianGrid, Customized,
 } from 'recharts'
 
@@ -19,6 +19,12 @@ const COLOR_NO = '#64748b'   // no participantes
 // nunca debe mostrar más de 100). Los componentes del ICFES (mate/lectura/inglés)
 // van de 0 a 100; el puntaje total histórico, de 0 a 500. Las que no están aquí
 // usan el dominio automático calculado a partir de los bigotes.
+// Para las variables cuyo mínimo físico es 0 pero no tienen un máximo natural
+// acotado (conteos/porcentajes de avance), el máximo se deja abierto (Infinity):
+// así el eje nunca baja de 0 pero el tope sigue el dominio automático de los
+// bigotes (datoMax). Los nombres del campo 'var' se confirmaron contra
+// comparativo.numericas de data.json (NUMERO_OPCIONES_INSCRITAS,
+// CREDITOS_APROBADOS_TOTAL, SEMESTRE_AVANCE).
 const RANGO_VALIDO = {
   ICFES_MATEMATICAS: [0, 100],
   ICFES_LECTURA_CRITICA: [0, 100],
@@ -30,6 +36,9 @@ const RANGO_VALIDO = {
   PCT_AVANCE_CREDITOS: [0, 100],
   PERCENTIL_PGA_PROGRAMA: [0, 100],
   PERCENTIL_PGA_NIVEL: [0, 100],
+  NUMERO_OPCIONES_INSCRITAS: [0, Infinity],
+  CREDITOS_APROBADOS_TOTAL: [0, Infinity],
+  SEMESTRE_AVANCE: [0, Infinity],
 }
 
 function fmt2(x) {
@@ -63,7 +72,7 @@ function cajasDe(d) {
 // describe el rectángulo del área de trazado: left/top/width/height). No usamos
 // la escala X de Recharts: en un ComposedChart sin series cartesianas visibles
 // no siempre expone un band scale con bandwidth(), lo que descolocaba las cajas.
-function Cajas({ yAxisMap, offset, cajas }) {
+function Cajas({ yAxisMap, offset, cajas, onHover }) {
   const yAxis = yAxisMap[Object.keys(yAxisMap)[0]]
   const yScale = yAxis.scale
   // Reparto uniforme de columnas dentro del área de trazado.
@@ -81,8 +90,14 @@ function Cajas({ yAxisMap, offset, cajas }) {
         const yMed = yScale(c.mediana)
         const yLow = yScale(c.whisker_low)
         const yHigh = yScale(c.whisker_high)
+        // Zona sensible al hover: cubre toda la columna del grupo (de bigote a
+        // bigote) para que el tooltip propio se active al pasar sobre la caja.
+        // Usamos un onMouseMove a nivel de grupo (no el Tip de Recharts, que
+        // depende de un payload que <Customized> no siempre activa).
         return (
-          <g key={i}>
+          <g key={i}
+             onMouseMove={(e) => onHover && onHover(c, e)}
+             onMouseLeave={() => onHover && onHover(null)}>
             {/* Bigote superior e inferior */}
             <line x1={cx} x2={cx} y1={yHigh} y2={yQ3} stroke={c.color} strokeWidth={1.5} />
             <line x1={cx} x2={cx} y1={yQ1} y2={yLow} stroke={c.color} strokeWidth={1.5} />
@@ -97,6 +112,11 @@ function Cajas({ yAxisMap, offset, cajas }) {
             {/* Mediana */}
             <line x1={x0} x2={x0 + anchoCaja} y1={yMed} y2={yMed}
                   stroke={c.color} strokeWidth={2.4} />
+            {/* Rectángulo transparente sobre toda la columna para capturar el
+                hover de forma fiable (incluido el espacio entre bigotes). */}
+            <rect x={x0} y={Math.min(yHigh, yLow)} width={anchoCaja}
+                  height={Math.max(1, Math.abs(yLow - yHigh))}
+                  fill="transparent" />
             {/* Etiqueta del grupo, centrada bajo su propia caja. La dibujamos
                 aquí (no con un XAxis de categorías) para que coincida exactamente
                 con la posición de la caja y no se corte ni se vaya a los extremos. */}
@@ -115,17 +135,20 @@ function Cajas({ yAxisMap, offset, cajas }) {
   )
 }
 
-function Tip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null
-  const c = payload[0].payload
+// Tooltip propio (HTML) para una caja: muestra los cinco números y el n. Se
+// posiciona con coordenadas relativas al contenedor del gráfico.
+function CajaTooltip({ caja, x, y }) {
+  if (!caja) return null
   return (
-    <div className="custom-tooltip">
-      <div className="tt-title">{label}</div>
-      <div className="tt-row"><span className="tt-k">Bigote sup.</span><span>{fmt2(c.whisker_high)}</span></div>
-      <div className="tt-row"><span className="tt-k">Q3</span><span>{fmt2(c.q3)}</span></div>
-      <div className="tt-row"><span className="tt-k">Mediana</span><span>{fmt2(c.mediana)}</span></div>
-      <div className="tt-row"><span className="tt-k">Q1</span><span>{fmt2(c.q1)}</span></div>
-      <div className="tt-row"><span className="tt-k">Bigote inf.</span><span>{fmt2(c.whisker_low)}</span></div>
+    <div className="custom-tooltip boxplot-tip"
+         style={{ left: x, top: y }}>
+      <div className="tt-title" style={{ color: caja.color }}>{caja.grupo}</div>
+      <div className="tt-row"><span className="tt-k">Bigote sup.</span><span>{fmt2(caja.whisker_high)}</span></div>
+      <div className="tt-row"><span className="tt-k">Q3</span><span>{fmt2(caja.q3)}</span></div>
+      <div className="tt-row"><span className="tt-k">Mediana</span><span>{fmt2(caja.mediana)}</span></div>
+      <div className="tt-row"><span className="tt-k">Q1</span><span>{fmt2(caja.q1)}</span></div>
+      <div className="tt-row"><span className="tt-k">Bigote inf.</span><span>{fmt2(caja.whisker_low)}</span></div>
+      <div className="tt-row"><span className="tt-k">n</span><span>{new Intl.NumberFormat('es-CO').format(caja.n)}</span></div>
     </div>
   )
 }
@@ -138,6 +161,16 @@ export default function ComparativeBoxplots({ data, initialVar }) {
   const [sel, setSel] = useState(
     initialVar || (numericas[0] && numericas[0].var) || '',
   )
+  // Caja activa bajo el cursor y posición (relativa al contenedor) del tooltip.
+  const [hover, setHover] = useState(null)
+  const onHover = (caja, e) => {
+    if (!caja) { setHover(null); return }
+    const host = e.currentTarget.ownerSVGElement?.parentElement
+    const rect = host?.getBoundingClientRect()
+    const x = rect ? e.clientX - rect.left + 12 : e.clientX
+    const y = rect ? e.clientY - rect.top + 12 : e.clientY
+    setHover({ caja, x, y })
+  }
 
   if (!numericas.length) {
     return (
@@ -186,26 +219,28 @@ export default function ComparativeBoxplots({ data, initialVar }) {
         Cajas de cuartiles (Q1-Q3), mediana y bigotes de Tukey para {variable.label}.
         Azul: participantes; gris: no participantes.
       </p>
-      <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart
-          data={cajas} margin={{ left: 16, right: 16, top: 12, bottom: 44 }}
-          aria-label={`Diagramas de caja de ${variable.label} para participantes frente a no participantes`}
-        >
-          <CartesianGrid stroke="#eef2f7" vertical={false} />
-          {/* XAxis solo para establecer la banda de categorías; ocultamos sus
-              marcas porque las etiquetas de grupo las dibujamos en <Cajas> para
-              que queden centradas bajo cada boxplot. */}
-          <XAxis dataKey="grupo" type="category" tick={false} axisLine={false}
-                 tickLine={false} height={1} interval={0}
-                 padding={{ left: 0, right: 0 }} />
-          <YAxis type="number" tick={{ fontSize: 10 }}
-                 domain={[vmin, vmax]} tickFormatter={fmt2}
-                 label={{ value: variable.label, angle: -90, position: 'insideLeft',
-                          style: { fontSize: 11, fill: '#475569', textAnchor: 'middle' } }} />
-          <Tooltip content={<Tip />} cursor={{ fill: '#f1f5f9' }} />
-          <Customized component={(props) => <Cajas {...props} cajas={cajas} />} />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <div style={{ position: 'relative' }}>
+        <ResponsiveContainer width="100%" height={320}>
+          <ComposedChart
+            data={cajas} margin={{ left: 16, right: 16, top: 12, bottom: 44 }}
+            aria-label={`Diagramas de caja de ${variable.label} para participantes frente a no participantes`}
+          >
+            <CartesianGrid stroke="#eef2f7" vertical={false} />
+            {/* XAxis solo para establecer la banda de categorías; ocultamos sus
+                marcas porque las etiquetas de grupo las dibujamos en <Cajas> para
+                que queden centradas bajo cada boxplot. */}
+            <XAxis dataKey="grupo" type="category" tick={false} axisLine={false}
+                   tickLine={false} height={1} interval={0}
+                   padding={{ left: 0, right: 0 }} />
+            <YAxis type="number" tick={{ fontSize: 10 }}
+                   domain={[vmin, vmax]} tickFormatter={fmt2}
+                   label={{ value: variable.label, angle: -90, position: 'insideLeft',
+                            style: { fontSize: 11, fill: '#475569', textAnchor: 'middle' } }} />
+            <Customized component={(props) => <Cajas {...props} cajas={cajas} onHover={onHover} />} />
+          </ComposedChart>
+        </ResponsiveContainer>
+        {hover && <CajaTooltip caja={hover.caja} x={hover.x} y={hover.y} />}
+      </div>
     </div>
   )
 }

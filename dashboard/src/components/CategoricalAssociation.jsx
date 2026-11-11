@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, ReferenceLine, LabelList,
+  CartesianGrid, ReferenceLine, LabelList, Cell,
 } from 'recharts'
 import { fmtInt } from '../data.js'
 
@@ -10,7 +10,11 @@ import { fmtInt } from '../data.js'
 // tasa base de pregrado y una insignia con la V de Cramér y su magnitud. SOLO lee
 // valores precalculados de comparativo.categoricas (nada se recomputa aquí).
 
-const BAR_COLOR = '#2563eb'
+// Paleta cualitativa para distinguir cada categoría (antes todas eran azules).
+const PALETTE = [
+  '#2563eb', '#0f766e', '#d97706', '#9333ea', '#dc2626', '#0891b2',
+  '#65a30d', '#db2777', '#4f46e5', '#ca8a04', '#059669', '#e11d48',
+]
 
 function fmtPct1(x) {
   return x == null ? '—' : `${x.toFixed(2).replace('.', ',')}%`
@@ -110,8 +114,11 @@ export default function CategoricalAssociation({ data, tasaBase }) {
               label={{ value: `base ${fmtPct1(tasaBase)}`, position: 'insideTopRight',
                        fontSize: 9, fill: '#d97706' }} />
           )}
-          <Bar dataKey="tasa_pct" name="Tasa %" fill={BAR_COLOR}
+          <Bar dataKey="tasa_pct" name="Tasa %"
                radius={[3, 3, 0, 0]} isAnimationActive={false}>
+            {filas.map((_, i) => (
+              <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+            ))}
             <LabelList dataKey="tasa_pct" position="top"
                        formatter={(v) => fmtPct1(v)}
                        style={{ fontSize: 9, fill: '#334155' }} />

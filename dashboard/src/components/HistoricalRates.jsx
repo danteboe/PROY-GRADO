@@ -90,12 +90,12 @@ export default function HistoricalRates({ rates }) {
       {meta.nota_framing && <p className="card-sub">{meta.nota_framing}</p>}
       <ResponsiveContainer width="100%" height={320}>
         <LineChart
-          data={rows} margin={{ left: 4, right: 16, top: 8, bottom: 4 }}
+          data={rows} margin={{ left: 24, right: 16, top: 8, bottom: 4 }}
           aria-label={`Tasa de inicio de movilidad (%) por ${String(label).toLowerCase()} y año, una línea por categoría. Los años sin dato aparecen como hueco en la línea.`}
         >
           <CartesianGrid stroke="#eef2f7" />
           <XAxis dataKey="anio" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`}
+          <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={64}
                  label={{ value: 'Tasa de inicio de movilidad (%)', angle: -90,
                           position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
           <Tooltip content={<Tip />} />

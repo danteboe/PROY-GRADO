@@ -1,5 +1,6 @@
 import ClusterSelection from './ClusterSelection.jsx'
 import ClusterHeatmap from './ClusterHeatmap.jsx'
+import ClusterScatter from './ClusterScatter.jsx'
 import ClusterExternalProfile from './ClusterExternalProfile.jsx'
 
 // Contenedor de la sección de clustering en Insights. Recibe el objeto
@@ -20,7 +21,7 @@ export default function ClusteringInsights({ clustering }) {
     )
   }
 
-  const { meta, curvas, clusters, narrativa } = clustering
+  const { meta, curvas, clusters, narrativa, scatter_muestra } = clustering
 
   return (
     <>
@@ -40,6 +41,7 @@ export default function ClusteringInsights({ clustering }) {
       </div>
       <ClusterSelection curvas={curvas} meta={meta} />
       <ClusterHeatmap clusters={clusters} meta={meta} />
+      <ClusterScatter muestra={scatter_muestra} clusters={clusters} />
       <ClusterExternalProfile clusters={clusters} meta={meta} />
     </>
   )

@@ -2,6 +2,15 @@ import {
   ComposedChart, Scatter, ErrorBar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts'
+import InfoTooltip from './InfoTooltip.jsx'
+
+const AYUDA_OR =
+  'Una regresión logística estima cómo se asocia cada rasgo con la probabilidad de ' +
+  'participar, controlando por los demás. El odds ratio (OR) resume esa asociación.\n' +
+  'Lectura: OR > 1 se asocia con MÁS participación; OR < 1, con menos; OR = 1, sin ' +
+  'asociación. La barra es el intervalo de confianza del 95%: si cruza 1, el efecto ' +
+  'no es concluyente.\n' +
+  'Es asociación, no causa.'
 
 // Forest-plot de razones de probabilidad (odds ratios) del modelo logístico:
 // cada punto es el OR de un predictor y la barra de error representa su IC 95%
@@ -60,7 +69,10 @@ export default function LogisticOddsRatios({ data }) {
 
   return (
     <div className="card wide">
-      <h3>Modelo logístico: razones de probabilidad (odds ratios)</h3>
+      <div className="card-head">
+        <h3>Modelo logístico: razones de probabilidad (odds ratios)</h3>
+        <InfoTooltip text={AYUDA_OR} label="Cómo leer los odds ratios" />
+      </div>
       <p className="card-sub">
         OR de cada predictor estandarizado con su IC 95% (bootstrap). Un OR &gt; 1 se
         asocia con mayor probabilidad de participar; &lt; 1, con menor. La línea

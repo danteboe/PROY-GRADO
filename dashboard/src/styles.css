@@ -38,6 +38,43 @@ body {
   outline-offset: 2px;
 }
 
+/* ---------- Ícono de ayuda reutilizable (InfoTooltip) ---------- */
+.info-tooltip { position: relative; display: inline-flex; align-items: center; }
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+}
+.info-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: 320px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-line;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* ---------- Sidebar de filtros ---------- */
 .sidebar {
   background: var(--panel);
@@ -207,7 +244,7 @@ body {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 16px;
+  gap: 22px;
 }
 
 .card {
@@ -245,6 +282,13 @@ body {
 }
 
 .footnote { color: var(--muted); font-size: 11px; margin-top: 18px; line-height: 1.5; }
+
+/* Tooltip propio de los boxplots (posicionado sobre el contenedor del gráfico). */
+.boxplot-tip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+}
 
 .custom-tooltip {
   background: #fff;
@@ -403,7 +447,7 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
-  margin: 24px 0 12px;
+  margin: 32px 0 18px;
   padding-bottom: 6px;
   border-bottom: 2px solid var(--accent-soft);
 }

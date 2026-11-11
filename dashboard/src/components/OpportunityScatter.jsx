@@ -29,7 +29,6 @@ const PALETTE = [
 ]
 
 export default function OpportunityScatter({ title, subtitle, data, avgRate }) {
-  const maxN = Math.max(...data.map((d) => d.n), 1)
   return (
     <div className="card wide">
       <h3>{title}</h3>
@@ -37,9 +36,13 @@ export default function OpportunityScatter({ title, subtitle, data, avgRate }) {
       <ResponsiveContainer width="100%" height={380}>
         <ScatterChart margin={{ left: 10, right: 30, top: 10, bottom: 30 }}>
           <CartesianGrid stroke="#eef2f7" />
-          <XAxis type="number" dataKey="n" name="Estudiantes"
+          {/* Escala logarítmica en X: las facultades grandes y pequeñas difieren
+              en órdenes de magnitud; en escala lineal las burbujas se apiñan a la
+              izquierda. La escala log las separa y hace legible el gráfico. */}
+          <XAxis type="number" dataKey="n" name="Estudiantes" scale="log"
+                 domain={['auto', 'auto']} allowDataOverflow
                  tick={{ fontSize: 11 }} tickFormatter={fmtInt}
-                 label={{ value: 'Estudiantes (tamaño del público)', position: 'bottom', fontSize: 11, fill: '#64748b' }} />
+                 label={{ value: 'Estudiantes (escala log)', position: 'bottom', fontSize: 11, fill: '#64748b' }} />
           <YAxis type="number" dataKey="tasa" name="Tasa"
                  tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`}
                  label={{ value: 'Tasa %', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
@@ -51,9 +54,9 @@ export default function OpportunityScatter({ title, subtitle, data, avgRate }) {
           <Tooltip content={<Tip />} cursor={{ strokeDasharray: '3 3' }} />
           <Scatter data={data} isAnimationActive={false}>
             {data.map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} fillOpacity={0.72} />)}
-            <LabelList dataKey="facultad" position="top"
-                       style={{ fontSize: 9, fill: '#475569' }}
-                       formatter={(v) => (v && v.length > 16 ? v.slice(0, 15) + '…' : v)} />
+            <LabelList dataKey="facultad" position="top" offset={8}
+                       style={{ fontSize: 8.5, fill: '#475569' }}
+                       formatter={(v) => (v && v.length > 12 ? v.slice(0, 11) + '…' : v)} />
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>

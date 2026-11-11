@@ -2,6 +2,14 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, Cell,
 } from 'recharts'
+import InfoTooltip from './InfoTooltip.jsx'
+
+const AYUDA_COHEN =
+  'La d de Cohen mide el tamaño del efecto: qué tan separadas están las medias de ' +
+  'los dos grupos, en desviaciones estándar.\n' +
+  'Guía de magnitud: |d| < 0,2 insignificante · ~0,2 pequeña · ~0,5 media · ~0,8 grande.\n' +
+  'El signo indica a favor de qué grupo: positivo favorece a participantes; negativo, a ' +
+  'no participantes. Es una asociación descriptiva, no una relación de causa.'
 
 // Gráfico de d de Cohen: barras horizontales del tamaño del efecto por variable
 // numérica, ordenadas por |d| descendente. El color codifica el signo (verde si
@@ -54,7 +62,10 @@ export default function CohenDChart({ data }) {
 
   return (
     <div className="card wide">
-      <h3>Tamaño del efecto (d de Cohen) por variable</h3>
+      <div className="card-head">
+        <h3>Tamaño del efecto (d de Cohen) por variable</h3>
+        <InfoTooltip text={AYUDA_COHEN} label="Qué es la d de Cohen" />
+      </div>
       <p className="card-sub">
         Diferencia estandarizada entre participantes y no participantes, ordenada por
         magnitud. Verde: a favor de participantes; ámbar: a favor de no participantes.
@@ -63,12 +74,15 @@ export default function CohenDChart({ data }) {
       <ResponsiveContainer width="100%" height={alto}>
         <BarChart
           layout="vertical" data={rows}
-          margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
+          margin={{ left: 8, right: 24, top: 22, bottom: 8 }}
           aria-label="Gráfico de barras horizontales del tamaño del efecto d de Cohen por variable, ordenado por magnitud"
         >
           <CartesianGrid stroke="#eef2f7" horizontal={false} />
+          {/* El dominio se amplía un poco más allá de ±0,8 para que las etiquetas
+              de referencia (posición 'top') no queden pegadas al borde y se corten. */}
           <XAxis type="number" tick={{ fontSize: 10 }}
-                 tickFormatter={(v) => fmtD(v)} domain={['auto', 'auto']} />
+                 tickFormatter={(v) => fmtD(v)}
+                 domain={([min, max]) => [Math.min(min, -0.9), Math.max(max, 0.9)]} />
           <YAxis type="category" dataKey="label" tick={{ fontSize: 10 }}
                  width={168} interval={0} />
           <Tooltip content={<Tip />} />

@@ -132,13 +132,18 @@ export default function ClusterExternalProfile({ clusters, meta }) {
           </select>
         </label>
       </div>
-      <ResponsiveContainer width="100%" height={Math.max(220, catData.length * 54 + 60)}>
-        <BarChart data={catData} layout="vertical" stackOffset="expand"
-                  margin={{ left: 8, right: 16, top: 4, bottom: 4 }}
+      {/* Barras apiladas al 100% VERTICALES: un grupo por posición en el eje X y
+          las categorías apiladas hacia arriba (petición del usuario: cada
+          cardinalidad de la categoría representada, barras que se extienden a lo
+          alto). */}
+      <ResponsiveContainer width="100%" height={340}>
+        <BarChart data={catData} stackOffset="expand"
+                  margin={{ left: 8, right: 16, top: 4, bottom: 24 }}
                   aria-label={`Composición porcentual por grupo de la dimensión seleccionada, excluyendo sin dato`}>
-          <CartesianGrid horizontal={false} stroke="#eef2f7" />
-          <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
-          <YAxis type="category" dataKey="grupo" width={160} tick={{ fontSize: 10 }} interval={0} />
+          <CartesianGrid vertical={false} stroke="#eef2f7" />
+          <XAxis type="category" dataKey="grupo" tick={{ fontSize: 10 }} interval={0}
+                 height={44} />
+          <YAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
           <Tooltip content={<TipCat />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           {categorias.map((c, i) => (
@@ -166,15 +171,18 @@ export default function ClusterExternalProfile({ clusters, meta }) {
           </select>
         </label>
       </div>
-      <ResponsiveContainer width="100%" height={Math.max(200, numData.length * 48 + 48)}>
-        <BarChart data={numData} layout="vertical"
-                  margin={{ left: 8, right: 24, top: 4, bottom: 8 }}
+      {/* Medias por grupo en barras VERTICALES (grupo en el eje X, media hacia lo
+          alto), según la petición del usuario. El eje Y usa el rango observado de
+          la variable (no 0–100 fijo). */}
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={numData}
+                  margin={{ left: 8, right: 24, top: 4, bottom: 24 }}
                   aria-label={`Media de ${metricaLabel} por grupo`}>
-          <CartesianGrid horizontal={false} stroke="#eef2f7" />
-          <XAxis type="number" domain={dominio} tick={{ fontSize: 11 }}
+          <CartesianGrid vertical={false} stroke="#eef2f7" />
+          <YAxis type="number" domain={dominio} tick={{ fontSize: 11 }}
                  tickFormatter={(v) => fmtNum(v, esEstrato ? 1 : 0)}
-                 label={{ value: metricaLabel, position: 'insideBottom', offset: -4, fontSize: 11, fill: '#64748b' }} />
-          <YAxis type="category" dataKey="grupo" width={160} tick={{ fontSize: 10 }} interval={0} />
+                 label={{ value: metricaLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
+          <XAxis type="category" dataKey="grupo" tick={{ fontSize: 10 }} interval={0} height={44} />
           <Tooltip
             cursor={{ fill: 'rgba(37,99,235,0.06)' }}
             content={({ active, payload, label }) => {
@@ -194,7 +202,8 @@ export default function ClusterExternalProfile({ clusters, meta }) {
               )
             }}
           />
-          <Bar dataKey="media" name={metricaLabel} isAnimationActive={false} radius={[0, 3, 3, 0]}>
+          <Bar dataKey="media" name={metricaLabel} isAnimationActive={false} radius={[3, 3, 0, 0]}
+               maxBarSize={90}>
             {numData.map((_, i) => <Cell key={i} fill={CLUSTER_COLORS[i % CLUSTER_COLORS.length]} />)}
           </Bar>
         </BarChart>

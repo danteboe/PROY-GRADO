@@ -81,7 +81,8 @@ export default function ClusterSelection({ curvas, meta }) {
               aria-label="Curva de inercia (método del codo) frente al número de grupos k, con el k elegido resaltado"
             >
               <CartesianGrid stroke="#eef2f7" />
-              <XAxis dataKey="k" type="number" domain={['dataMin', 'dataMax']}
+              <XAxis dataKey="k" type="number" domain={[2, 10]}
+                     ticks={[2, 3, 4, 5, 6, 7, 8, 9, 10]}
                      allowDecimals={false} tick={{ fontSize: 10 }}
                      label={{ value: 'Número de grupos (k)', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#64748b' }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v, 0)}
@@ -108,7 +109,8 @@ export default function ClusterSelection({ curvas, meta }) {
               aria-label="Curva de silueta media frente al número de grupos k, con el k elegido resaltado"
             >
               <CartesianGrid stroke="#eef2f7" />
-              <XAxis dataKey="k" type="number" domain={['dataMin', 'dataMax']}
+              <XAxis dataKey="k" type="number" domain={[2, 10]}
+                     ticks={[2, 3, 4, 5, 6, 7, 8, 9, 10]}
                      allowDecimals={false} tick={{ fontSize: 10 }}
                      label={{ value: 'Número de grupos (k)', position: 'insideBottom', offset: -12, fontSize: 11, fill: '#64748b' }} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmt(v, 2)}
