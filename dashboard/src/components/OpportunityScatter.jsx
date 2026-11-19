@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, Cell, LabelList,
@@ -9,7 +10,7 @@ import { fmtInt, fmtPct } from '../data.js'
 //   eje Y = tasa de participación (%)
 //   tamaño de burbuja = estudiantes que NO participan (oportunidad absoluta)
 // Cuadrante "abajo-derecha" (muchos estudiantes, baja tasa) = mayor potencial.
-function Tip({ active, payload }) {
+function Tip({ active, payload, sinParticiparLabel }) {
   if (!active || !payload || !payload.length) return null
   const d = payload[0].payload
   return (
@@ -17,7 +18,7 @@ function Tip({ active, payload }) {
       <div className="tt-title">{d.facultad}</div>
       <div className="tt-row"><span className="tt-k">Estudiantes</span><span>{fmtInt(d.n)}</span></div>
       <div className="tt-row"><span className="tt-k">Participan</span><span>{fmtInt(d.part)}</span></div>
-      <div className="tt-row"><span className="tt-k">No participan</span><span>{fmtInt(d.noPart)}</span></div>
+      <div className="tt-row"><span className="tt-k">{sinParticiparLabel}</span><span>{fmtInt(d.noPart)}</span></div>
       <div className="tt-row"><span className="tt-k">Tasa</span><span>{fmtPct(d.tasa)}</span></div>
     </div>
   )
@@ -28,30 +29,32 @@ const PALETTE = [
   '#65a30d', '#db2777', '#4f46e5', '#ca8a04', '#059669', '#e11d48',
 ]
 
-export default function OpportunityScatter({ title, subtitle, data, avgRate }) {
+export default function OpportunityScatter({ title, subtitle, data, avgRate, sinParticiparLabel }) {
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <h3>{title}</h3>
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={380}>
-        <ScatterChart margin={{ left: 10, right: 30, top: 10, bottom: 30 }}>
+        <ScatterChart margin={{ left: 10, right: 30, top: 14, bottom: 30 }}>
           <CartesianGrid stroke="#eef2f7" />
           {/* Escala logarítmica en X: las facultades grandes y pequeñas difieren
               en órdenes de magnitud; en escala lineal las burbujas se apiñan a la
               izquierda. La escala log las separa y hace legible el gráfico. */}
           <XAxis type="number" dataKey="n" name="Estudiantes" scale="log"
-                 domain={['auto', 'auto']} allowDataOverflow
+                 domain={[(min) => Math.max(1, min) / 1.05, (max) => Math.max(1, max) * 1.05]}
+                 padding={{ left: 32, right: 32 }}
                  tick={{ fontSize: 11 }} tickFormatter={fmtInt}
                  label={{ value: 'Estudiantes (escala log)', position: 'bottom', fontSize: 11, fill: '#64748b' }} />
           <YAxis type="number" dataKey="tasa" name="Tasa"
+                 padding={{ top: 30, bottom: 20 }}
                  tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`}
                  label={{ value: 'Tasa %', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
-          <ZAxis type="number" dataKey="noPart" range={[80, 1200]} name="No participan" />
+          <ZAxis type="number" dataKey="noPart" range={[80, 1200]} name={sinParticiparLabel} />
           {avgRate != null && (
             <ReferenceLine y={avgRate} stroke="#94a3b8" strokeDasharray="4 4"
-                           label={{ value: `media ${fmtPct(avgRate, 1)}`, fontSize: 10, fill: '#64748b', position: 'right' }} />
+                           label={{ value: `media ${fmtPct(avgRate, 1)}`, fontSize: 10, fill: '#64748b', position: 'insideTopRight' }} />
           )}
-          <Tooltip content={<Tip />} cursor={{ strokeDasharray: '3 3' }} />
+          <Tooltip content={<Tip sinParticiparLabel={sinParticiparLabel} />} cursor={{ strokeDasharray: '3 3' }} />
           <Scatter data={data} isAnimationActive={false}>
             {data.map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} fillOpacity={0.72} />)}
             <LabelList dataKey="facultad" position="top" offset={8}
@@ -62,9 +65,8 @@ export default function OpportunityScatter({ title, subtitle, data, avgRate }) {
       </ResponsiveContainer>
       <p className="chart-note">
         Burbujas grandes y bajas (muchos estudiantes, poca participación) señalan el
-        mayor potencial de crecimiento. El tamaño representa el número de estudiantes
-        que aún no participan.
+        mayor potencial de crecimiento.
       </p>
-    </div>
+    </ChartCard>
   )
 }

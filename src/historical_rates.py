@@ -202,6 +202,28 @@ def _serie_dimension(base: pd.DataFrame, dim: str) -> list:
 # ===========================================================================
 # API pública
 # ===========================================================================
+def active_student_years(rend: pd.DataFrame) -> pd.DataFrame:
+    """Devuelve una fila por estudiante y año con rendimiento registrado."""
+    periodos = rend["PERIODO"]
+    anios = {periodo: utils.periodo_to_year(periodo) for periodo in periodos.dropna().unique()}
+    activos = rend[[KEY]].assign(anio=periodos.map(anios)).dropna(subset=[KEY, "anio"])
+    activos["anio"] = activos["anio"].astype(int)
+    return activos.drop_duplicates()
+
+
+def compute_active_population(activos: pd.DataFrame, desde: int, hasta: int) -> dict:
+    """Cuenta personas únicas en cada intervalo inclusivo, también de un solo año."""
+    activos = activos[activos["anio"].between(desde, hasta)]
+    rangos = []
+    for inicio in range(desde, hasta + 1):
+        # Cada estudiante empieza a contar al llegar a su primer año de
+        # actividad desde el inicio del intervalo, aunque reaparezca después.
+        primeros = activos[activos["anio"] >= inicio].groupby(KEY)["anio"].min()
+        n = primeros.value_counts().reindex(range(inicio, hasta + 1), fill_value=0)
+        rangos.append(n.cumsum().astype(int).tolist())
+    return {"desde": desde, "hasta": hasta, "rangos": rangos}
+
+
 def compute_historical_rates(df: pd.DataFrame, rend: pd.DataFrame) -> dict:
     """Calcula la clave ``historico_tasas`` del contrato §2.3 de design.md.
 
@@ -229,12 +251,8 @@ def compute_historical_rates(df: pd.DataFrame, rend: pd.DataFrame) -> dict:
 
     # (2) ACTIVOS: año del periodo, descartar no parseables, recortar al rango,
     #     y dejar un (estudiante, año) único por fila.
-    rend = rend[[KEY, "PERIODO"]].copy()
-    rend["anio"] = rend["PERIODO"].map(utils.periodo_to_year)
-    rend = rend.dropna(subset=["anio"]).copy()
-    rend["anio"] = rend["anio"].astype(int)
-    rend = rend[(rend["anio"] >= TASA_ANIO_MIN) & (rend["anio"] <= TASA_ANIO_MAX)]
-    activos = rend[[KEY, "anio"]].drop_duplicates()
+    activos = active_student_years(rend)
+    activos = activos[activos["anio"].between(TASA_ANIO_MIN, TASA_ANIO_MAX)]
 
     # (3) MERGE ÚNICO + NORMALIZACIÓN ÚNICA.
     cols_crudas = list(COLS_CRUDAS.values())

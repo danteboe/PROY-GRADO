@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts'
@@ -37,7 +38,7 @@ function Tip({ active, payload, label }) {
 //   toggle     : nodo React opcional (botón) que se renderiza en la card-head.
 export default function HistoricalComposition({ title, subtitle, data, categories, note, toggle }) {
   return (
-    <div className="card wide">
+    <ChartCard wide>
       {toggle ? (
         <div className="card-head">
           <h3>{title}</h3>
@@ -69,6 +70,6 @@ export default function HistoricalComposition({ title, subtitle, data, categorie
         </AreaChart>
       </ResponsiveContainer>
       {note && <p className="footnote">{note}</p>}
-    </div>
+    </ChartCard>
   )
 }

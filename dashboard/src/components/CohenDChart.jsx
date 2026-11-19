@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, Cell,
@@ -61,7 +62,7 @@ export default function CohenDChart({ data }) {
   const alto = Math.max(260, rows.length * 26 + 60)
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>Tamaño del efecto (d de Cohen) por variable</h3>
         <InfoTooltip text={AYUDA_COHEN} label="Qué es la d de Cohen" />
@@ -99,6 +100,6 @@ export default function CohenDChart({ data }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

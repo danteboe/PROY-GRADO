@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
@@ -32,10 +33,10 @@ export default function BarRanking({
 
   const labelFmt = (v) => (isPct ? fmtPct(v, 1) : fmtInt(v))
 
-  const METRIC_LABELS = { n: 'Estudiantes', part: 'Con internac.', tasa: 'Tasa %' }
+  const METRIC_LABELS = { n: 'Estudiantes', part: 'Participantes', tasa: 'Tasa %' }
 
   return (
-    <div className="card">
+    <ChartCard>
       <div className="card-head">
         <h3>{title}</h3>
         <div className="metric-toggle">
@@ -75,6 +76,6 @@ export default function BarRanking({
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

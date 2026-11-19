@@ -1,13 +1,10 @@
-import ClusterSelection from './ClusterSelection.jsx'
-import ClusterHeatmap from './ClusterHeatmap.jsx'
 import ClusterScatter from './ClusterScatter.jsx'
 import ClusterExternalProfile from './ClusterExternalProfile.jsx'
 
 // Contenedor de la sección de clustering en Insights. Recibe el objeto
 // `clustering` (precalculado en Python). Si es null o meta.disponible===false,
 // muestra un placeholder (patrón de ComparativoInsights en App.jsx). Si hay datos,
-// muestra la narrativa, un encuadre descriptivo (asociación, no causa) y los tres
-// gráficos: selección de k, heatmap de z-scores y perfilado externo.
+// muestra la narrativa, la dispersión y el perfilado externo de los grupos.
 export default function ClusteringInsights({ clustering }) {
   if (!clustering || clustering.meta?.disponible === false) {
     return (
@@ -21,28 +18,28 @@ export default function ClusteringInsights({ clustering }) {
     )
   }
 
-  const { meta, curvas, clusters, narrativa, scatter_muestra } = clustering
+  const { clusters, narrativa, scatter_muestra } = clustering
 
   return (
     <>
-      {narrativa && (
-        <div className="card wide">
-          <p className="card-sub" style={{ margin: 0, lineHeight: 1.55 }}>{narrativa}</p>
+      <div className="cluster-summary wide">
+        {narrativa && (
+          <div className="card">
+            <p className="card-sub">{narrativa}</p>
+          </div>
+        )}
+        <div className="card">
+          <p className="card-sub">
+            Estos grupos son <strong>patrones descriptivos</strong> hallados por K-means
+            sobre los participantes de pregrado, <strong>no categorías administrativas</strong>{' '}
+            ni relaciones causales. Describen cómo se agrupan los rasgos académicos y
+            demográficos; las variables externas (ICFES, estrato, género, etc.) solo
+            caracterizan los grupos resultantes.
+          </p>
         </div>
-      )}
-      <div className="card wide">
-        <p className="card-sub" style={{ margin: 0, lineHeight: 1.55 }}>
-          Estos grupos son <strong>patrones descriptivos</strong> hallados por K-means
-          sobre los participantes de pregrado, <strong>no categorías administrativas</strong>{' '}
-          ni relaciones causales. Describen cómo se agrupan los rasgos académicos y
-          demográficos; las variables externas (ICFES, estrato, género, etc.) solo
-          caracterizan los grupos resultantes.
-        </p>
       </div>
-      <ClusterSelection curvas={curvas} meta={meta} />
-      <ClusterHeatmap clusters={clusters} meta={meta} />
       <ClusterScatter muestra={scatter_muestra} clusters={clusters} />
-      <ClusterExternalProfile clusters={clusters} meta={meta} />
+      <ClusterExternalProfile clusters={clusters} />
     </>
   )
 }

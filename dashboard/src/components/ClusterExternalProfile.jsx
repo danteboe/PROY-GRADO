@@ -1,18 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, Cell,
+  CartesianGrid, Legend, Text,
 } from 'recharts'
-import { fmtInt } from '../data.js'
-
-// Perfilado de los grupos con variables EXTERNAS (no usadas para agrupar):
-//  (a) barras apiladas al 100% por grupo de una dimensión categórica elegible
-//      (GENERO/FACULTAD/MODALIDAD_PRINCIPAL/TIPO_ADMISION/NIVEL), excluyendo
-//      'Sin dato' de la base del porcentaje;
-//  (b) barras de medias (ICFES/estrato/opciones/eventos) por grupo, con ejes
-//      derivados de meta.escalas_perfil (mín/máx observados, NUNCA 0–100 fijo) y
-//      nota de cobertura interpolada de cobertura_pct.
-// SOLO lee valores precalculados en Python; no recalcula nada.
+import BoxplotChart from './BoxplotChart.jsx'
+import ChartCard from './ChartCard.jsx'
 
 const COLORS = ['#1d4ed8', '#0f766e', '#d97706', '#9333ea', '#dc2626', '#0891b2', '#65a30d', '#be123c', '#64748b']
 const CLUSTER_COLORS = ['#1d4ed8', '#b45309', '#0f766e', '#9333ea', '#dc2626', '#0891b2']
@@ -48,11 +40,9 @@ function TipCat({ active, payload, label }) {
   )
 }
 
-export default function ClusterExternalProfile({ clusters, meta }) {
+export default function ClusterExternalProfile({ clusters }) {
   const [dimVar, setDimVar] = useState('GENERO')
   const [metricaVar, setMetricaVar] = useState(null)
-
-  const escalas = meta?.escalas_perfil || {}
 
   // --- (a) Barras apiladas 100% por grupo para la dimensión elegida. --------
   // Reconstruye, por grupo, la distribución % de la dimensión seleccionada,
@@ -75,30 +65,22 @@ export default function ClusterExternalProfile({ clusters, meta }) {
     return { catData: filas, categorias: Array.from(catSet) }
   }, [clusters, dimVar])
 
-  // --- (b) Barras de medias por grupo para una métrica numérica externa. -----
-  // Las métricas disponibles salen del perfil_numerico del primer grupo.
-  const metricas = useMemo(() => {
-    if (!clusters?.length) return []
-    return (clusters[0].perfil_numerico || []).map((p) => ({ var: p.var, label: p.label }))
-  }, [clusters])
-
-  const metricaSel = metricaVar || metricas[0]?.var || null
-
-  const { numData, cobertura, esEstrato, dominio } = useMemo(() => {
-    if (!clusters?.length || !metricaSel) {
-      return { numData: [], cobertura: [], esEstrato: false, dominio: ['auto', 'auto'] }
-    }
-    const filas = []
-    const cob = []
-    for (const cl of clusters) {
-      const m = (cl.perfil_numerico || []).find((p) => p.var === metricaSel)
-      filas.push({ grupo: cl.etiqueta, media: m?.media ?? null })
-      cob.push({ grupo: cl.etiqueta, cobertura_pct: m?.cobertura_pct ?? null, n_con_dato: m?.n_con_dato ?? null })
-    }
-    const esc = escalas[metricaSel]
-    const dom = esc && esc.min != null && esc.max != null ? [esc.min, esc.max] : ['auto', 'auto']
-    return { numData: filas, cobertura: cob, esEstrato: metricaSel === 'ESTRATO_SOCIAL', dominio: dom }
-  }, [clusters, metricaSel, escalas])
+  const metricas = (clusters?.[0]?.perfil_numerico || []).map((perfil) => ({
+    var: perfil.var,
+    label: perfil.label.replace(/ \(media\)$/, ''),
+  }))
+  const metrica = metricas.find((m) => m.var === metricaVar) || metricas[0]
+  const cajas = (clusters || []).flatMap((cl) => {
+    const perfil = cl.perfil_numerico?.find((p) => p.var === metrica?.var)
+    if (!perfil?.caja) return []
+    return [{
+      ...perfil.caja,
+      grupo: cl.etiqueta,
+      color: CLUSTER_COLORS[cl.id % CLUSTER_COLORS.length],
+      n: perfil.n_con_dato,
+      cobertura_pct: perfil.cobertura_pct,
+    }]
+  })
 
   if (!clusters?.length) {
     return (
@@ -109,114 +91,72 @@ export default function ClusterExternalProfile({ clusters, meta }) {
     )
   }
 
-  const metricaLabel = metricas.find((m) => m.var === metricaSel)?.label || ''
-
   return (
-    <div className="card wide">
-      <h3>Perfilado de los grupos con variables externas</h3>
-      <p className="card-sub">
-        Variables que <strong>no</strong> entraron en el agrupamiento, usadas solo para
-        describir los grupos resultantes. Son asociaciones descriptivas, no causas.
-      </p>
+    <>
+      <ChartCard wide>
+        <div className="card-head">
+          <h4 style={{ margin: 0, fontSize: 13, color: '#475569' }}>Composición por grupo (100%)</h4>
+          <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
+            <select
+              className="toggle-btn"
+              value={dimVar} onChange={(e) => setDimVar(e.target.value)}
+              aria-label="Seleccionar dimensión categórica para la composición por grupo"
+            >
+              {DIMS.map((d) => <option key={d.var} value={d.var}>{d.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <p className="card-sub">Composición de los grupos según una variable categórica externa.</p>
+        <ResponsiveContainer width="100%" height={340}>
+          <BarChart data={catData} stackOffset="expand"
+                    margin={{ left: 8, right: 16, top: 4, bottom: 24 }}
+                    aria-label={`Composición porcentual por grupo de la dimensión seleccionada, excluyendo sin dato`}>
+            <CartesianGrid vertical={false} stroke="#eef2f7" />
+            <XAxis type="category" dataKey="grupo" interval={0} height={40} tick={({ x, y, payload, width }) => (
+                     <Text x={x} y={y + 2} width={Math.min(130, width / catData.length - 8)}
+                           textAnchor="middle" verticalAnchor="start" lineHeight="12px"
+                           fontSize={10} fill="#475569">
+                       {payload.value}
+                     </Text>
+                   )} />
+            <YAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
+            <Tooltip content={<TipCat />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {categorias.map((c, i) => (
+              <Bar key={c} dataKey={c} stackId="1" fill={COLORS[i % COLORS.length]}
+                   isAnimationActive={false} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+        <p className="chart-note">
+          Porcentajes dentro de cada grupo, excluyendo «Sin dato» de la base. Las categorías
+          con menos de 30 casos se suprimen en origen por privacidad, por lo que las barras
+          pueden no sumar el total del grupo.
+        </p>
 
-      {/* (a) Composición categórica apilada al 100% por grupo. */}
-      <div className="card-head">
-        <h4 style={{ margin: 0, fontSize: 13, color: '#475569' }}>Composición por grupo (100%)</h4>
-        <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
-          <select
-            className="toggle-btn"
-            value={dimVar} onChange={(e) => setDimVar(e.target.value)}
-            aria-label="Seleccionar dimensión categórica para la composición por grupo"
-          >
-            {DIMS.map((d) => <option key={d.var} value={d.var}>{d.label}</option>)}
-          </select>
-        </label>
-      </div>
-      {/* Barras apiladas al 100% VERTICALES: un grupo por posición en el eje X y
-          las categorías apiladas hacia arriba (petición del usuario: cada
-          cardinalidad de la categoría representada, barras que se extienden a lo
-          alto). */}
-      <ResponsiveContainer width="100%" height={340}>
-        <BarChart data={catData} stackOffset="expand"
-                  margin={{ left: 8, right: 16, top: 4, bottom: 24 }}
-                  aria-label={`Composición porcentual por grupo de la dimensión seleccionada, excluyendo sin dato`}>
-          <CartesianGrid vertical={false} stroke="#eef2f7" />
-          <XAxis type="category" dataKey="grupo" tick={{ fontSize: 10 }} interval={0}
-                 height={44} />
-          <YAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
-          <Tooltip content={<TipCat />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
-          {categorias.map((c, i) => (
-            <Bar key={c} dataKey={c} stackId="1" fill={COLORS[i % COLORS.length]}
-                 isAnimationActive={false} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
-      <p className="chart-note">
-        Porcentajes dentro de cada grupo, excluyendo «Sin dato» de la base. Las categorías
-        con menos de 30 casos se suprimen en origen por privacidad, por lo que las barras
-        pueden no sumar el total del grupo.
-      </p>
+      </ChartCard>
 
-      {/* (b) Medias de variables numéricas externas por grupo. */}
-      <div className="card-head" style={{ marginTop: 16 }}>
-        <h4 style={{ margin: 0, fontSize: 13, color: '#475569' }}>Medias por grupo</h4>
-        <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
-          <select
-            className="toggle-btn"
-            value={metricaSel || ''} onChange={(e) => setMetricaVar(e.target.value)}
-            aria-label="Seleccionar métrica numérica para las medias por grupo"
-          >
-            {metricas.map((m) => <option key={m.var} value={m.var}>{m.label}</option>)}
-          </select>
-        </label>
-      </div>
-      {/* Medias por grupo en barras VERTICALES (grupo en el eje X, media hacia lo
-          alto), según la petición del usuario. El eje Y usa el rango observado de
-          la variable (no 0–100 fijo). */}
-      <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={numData}
-                  margin={{ left: 8, right: 24, top: 4, bottom: 24 }}
-                  aria-label={`Media de ${metricaLabel} por grupo`}>
-          <CartesianGrid vertical={false} stroke="#eef2f7" />
-          <YAxis type="number" domain={dominio} tick={{ fontSize: 11 }}
-                 tickFormatter={(v) => fmtNum(v, esEstrato ? 1 : 0)}
-                 label={{ value: metricaLabel, angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
-          <XAxis type="category" dataKey="grupo" tick={{ fontSize: 10 }} interval={0} height={44} />
-          <Tooltip
-            cursor={{ fill: 'rgba(37,99,235,0.06)' }}
-            content={({ active, payload, label }) => {
-              if (!active || !payload || !payload.length) return null
-              const cob = cobertura.find((c) => c.grupo === label)
-              return (
-                <div className="custom-tooltip">
-                  <div className="tt-title">{label}</div>
-                  <div className="tt-row"><span className="tt-k">{metricaLabel}</span><span>{fmtNum(payload[0].value, esEstrato ? 2 : 1)}</span></div>
-                  {cob?.cobertura_pct != null && (
-                    <div className="tt-row"><span className="tt-k">Cobertura</span><span>{fmtNum(cob.cobertura_pct, 1)}% ({fmtInt(cob.n_con_dato)})</span></div>
-                  )}
-                  {esEstrato && (
-                    <div className="tt-row"><span className="tt-k" style={{ fontStyle: 'italic' }}>Indicador ordinal orientativo</span></div>
-                  )}
-                </div>
-              )
-            }}
-          />
-          <Bar dataKey="media" name={metricaLabel} isAnimationActive={false} radius={[3, 3, 0, 0]}
-               maxBarSize={90}>
-            {numData.map((_, i) => <Cell key={i} fill={CLUSTER_COLORS[i % CLUSTER_COLORS.length]} />)}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-      <p className="chart-note">
-        Medias calculadas solo sobre quienes tienen dato en cada grupo (ver cobertura en el
-        tooltip): {cobertura.map((c, i) => (
-          <span key={c.grupo}>
-            {i > 0 ? '; ' : ''}{c.grupo}: {c.cobertura_pct != null ? `${fmtNum(c.cobertura_pct, 1)}%` : '—'}
-          </span>
-        ))}. El eje usa el rango observado de la variable (no una escala 0–100 fija).
-        {esEstrato && ' La media de estrato es un indicador ordinal orientativo, no una magnitud exacta.'}
-      </p>
-    </div>
+      <ChartCard wide>
+        <div className="card-head">
+          <h3>Distribución por grupo (boxplots)</h3>
+          <label className="metric-toggle">
+            <select className="toggle-btn" value={metrica?.var || ''}
+                    onChange={(event) => setMetricaVar(event.target.value)}
+                    aria-label="Seleccionar variable numérica para la distribución por grupo">
+              {metricas.map((m) => <option key={m.var} value={m.var}>{m.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <p className="card-sub">
+          Distribución de una variable externa entre quienes tienen dato en cada grupo.
+          Las cajas muestran Q1, mediana y Q3. Los bigotes de Tukey llegan a los extremos
+          dentro de 1,5 veces el rango intercuartílico desde cada cuartil.
+          {metrica?.var === 'ESTRATO_SOCIAL' && ' El estrato se interpreta como una escala ordinal.'}
+        </p>
+        <BoxplotChart key={metrica?.var} cajas={cajas} label={metrica?.label}
+                      rango={metrica?.var === 'ESTRATO_SOCIAL' ? [1, 6] : [0, Infinity]}
+                      descripcion={`Diagramas de caja de ${metrica?.label || 'la variable seleccionada'} por grupo`} />
+      </ChartCard>
+    </>
   )
 }

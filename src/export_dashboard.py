@@ -101,6 +101,25 @@ def _discretize_step(s: pd.Series, step: int, lo: int, hi: int) -> pd.Series:
     return v.fillna(NA_SENTINEL).astype(int)
 
 
+def _activity_counts(d: pd.DataFrame, ids: pd.Series, activos: pd.DataFrame, desde: int, hasta: int) -> dict:
+    """Agrupa conteos por celda del cubo y conjunto de años, sin exportar identificadores."""
+    # ngroup y la agregación del cubo recorren las mismas celdas en orden.
+    perfiles = d.groupby(CAT_DIMS + list(NUM_DIMS), dropna=False).ngroup()
+    perfil_por_estudiante = pd.Series(perfiles.to_numpy(), index=ids)
+    en_rango = activos[activos["anio"].between(desde, hasta)]
+    anios = en_rango.sort_values("anio").groupby(KEY)["anio"].agg(tuple)
+    patrones, codebook = pd.factorize(anios)
+    conteos = pd.DataFrame({
+        "perfil": anios.index.map(perfil_por_estudiante).fillna(-1).astype(int),
+        "patron": patrones,
+    }).groupby(["perfil", "patron"]).size()
+    return {
+        "anios": [list(map(int, patron)) for patron in codebook],
+        # perfil -1: activo en el historial sin atributos en el dataset analítico.
+        "conteos": [[int(perfil), int(patron), int(n)] for (perfil, patron), n in conteos.items()],
+    }
+
+
 def build_cube(verbose: bool = True) -> dict:
     df = pd.read_parquet(config.ANALYTIC_DATASET)
     fac_map = _faculty_name_map()
@@ -155,6 +174,18 @@ def build_cube(verbose: bool = True) -> dict:
     dicts = {}
     for dim in CAT_DIMS:
         cats = sorted(cube[dim].astype(str).unique().tolist())
+        if dim == "anio_mov":
+            anios = [int(cat) for cat in cats if cat.isdecimal()]
+            if anios:
+                desde, hasta = min(anios), max(anios)
+                cats = [str(anio) for anio in range(desde, hasta + 1)] + ["N/A"]
+        etiqueta_faltante = (
+            "N/A" if dim == "anio_mov" else
+            "No participa" if dim in {"modalidad", "resultado"} else
+            "Sin dato"
+        )
+        if etiqueta_faltante not in cats:
+            cats.append(etiqueta_faltante)
         codebooks[dim] = {v: i for i, v in enumerate(cats)}
         dicts[dim] = cats
 
@@ -282,6 +313,13 @@ def build_cube(verbose: bool = True) -> dict:
         "historial_rendimiento", columns=["CODIGO_ESTUDIANTE", "PERIODO"]
     )
     out["historico_tasas"] = historical_rates.compute_historical_rates(df, rend)
+    anios_mov = [int(cat) for cat in dicts["anio_mov"] if cat.isdecimal()]
+    if anios_mov:
+        activos = historical_rates.active_student_years(rend)
+        out["poblacion_activa"] = historical_rates.compute_active_population(
+            activos, min(anios_mov), max(anios_mov)
+        )
+        out["actividad"] = _activity_counts(d, df[KEY], activos, min(anios_mov), max(anios_mov))
 
     # Caracterización por clustering (K-means) de los participantes de pregrado
     # (fuente única; mismo patrón que el comparativo, RF-1/RF-2). Recibe el df ya

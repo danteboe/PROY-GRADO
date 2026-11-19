@@ -232,28 +232,34 @@ def construir_etiquetas(clusters_z: list) -> list:
 # Perfilado (design.md §2.6)
 # ===========================================================================
 def _perfil_numerico_cluster(sub_cluster: pd.DataFrame) -> list:
-    """Media/n_con_dato/cobertura_pct por variable de PERFIL_NUMERICO."""
+    """Media, cobertura y resumen de caja por variable de PERFIL_NUMERICO."""
     n_cluster = len(sub_cluster)
     out = []
     for var, label in PERFIL_NUMERICO:
+        serie = pd.to_numeric(sub_cluster[var], errors="coerce").dropna()
         if var == "ESTRATO_SOCIAL":
-            # Coerción explícita: NaN/no-numéricos -> NaN; solo 1..6 (design.md §2.6).
-            serie = pd.to_numeric(sub_cluster.get(var), errors="coerce")
-            valido = serie.between(1, 6)
-            n_con_dato = int(valido.sum())
-            media = float(serie[valido].mean()) if n_con_dato > 0 else None
-        else:
-            serie = pd.to_numeric(sub_cluster.get(var), errors="coerce")
-            valido = serie.notna()
-            n_con_dato = int(valido.sum())
-            media = float(serie[valido].mean()) if n_con_dato > 0 else None
+            serie = serie[serie.between(1, 6)]
+        n_con_dato = len(serie)
+        media = float(serie.mean()) if n_con_dato else None
         cobertura_pct = 100 * n_con_dato / n_cluster if n_cluster else 0.0
+        caja = None
+        if n_con_dato >= MIN_N:
+            q1, mediana, q3 = serie.quantile([0.25, 0.5, 0.75])
+            margen = 1.5 * (q3 - q1)
+            caja = {
+                "whisker_low": float(min(q1, serie[serie >= q1 - margen].min())),
+                "q1": float(q1),
+                "mediana": float(mediana),
+                "q3": float(q3),
+                "whisker_high": float(max(q3, serie[serie <= q3 + margen].max())),
+            }
         out.append({
             "var": var,
             "label": label,
             "media": _redondear("media", media),
             "n_con_dato": n_con_dato,
             "cobertura_pct": _redondear("cobertura_pct", cobertura_pct),
+            "caja": caja,
         })
     return out
 

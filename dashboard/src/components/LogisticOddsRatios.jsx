@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   ComposedChart, Scatter, ErrorBar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
@@ -68,7 +69,7 @@ export default function LogisticOddsRatios({ data }) {
   const margen = (vmax - vmin) * 0.1 || 0.2
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>Modelo logístico: razones de probabilidad (odds ratios)</h3>
         <InfoTooltip text={AYUDA_OR} label="Cómo leer los odds ratios" />
@@ -108,6 +109,6 @@ export default function LogisticOddsRatios({ data }) {
       <p className="chart-note">
         OR aproximados; IC por bootstrap; asociación, no causa.
       </p>
-    </div>
+    </ChartCard>
   )
 }

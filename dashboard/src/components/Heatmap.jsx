@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import { useState } from 'react'
 import { fmtInt, fmtPct } from '../data.js'
 
@@ -81,7 +82,7 @@ export default function Heatmap({ title, subtitle, data }) {
   }
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <h3>{title}</h3>
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <div className="heatmap-scroll">
@@ -126,6 +127,6 @@ export default function Heatmap({ title, subtitle, data }) {
         más intenso = mayor tasa. Permite ver si la brecha por estrato se repite dentro
         de cada facultad.
       </p>
-    </div>
+    </ChartCard>
   )
 }

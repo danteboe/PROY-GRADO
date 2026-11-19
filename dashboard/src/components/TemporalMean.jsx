@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import { useState } from 'react'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -49,7 +50,7 @@ export default function TemporalMean({ title, subtitle, series }) {
   }))
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>{title}</h3>
         <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
@@ -85,6 +86,6 @@ export default function TemporalMean({ title, subtitle, series }) {
                 dot={{ r: 2.5 }} activeDot={{ r: 5 }} isAnimationActive={false} name="Media" />
         </ComposedChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

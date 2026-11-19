@@ -79,6 +79,8 @@ export async function loadCube() {
     // histórico de composición. Precalculado en Python (src/historical_rates.py);
     // los componentes solo LEEN de aquí.
     historicoTasas: raw.historico_tasas || null,
+    poblacionActiva: raw.poblacion_activa || null,
+    actividad: raw.actividad || null,
     // Bloque de clustering (K-means sobre participantes de pregrado): perfiles
     // internos descriptivos. Objeto {meta, curvas, clusters, narrativa}
     // precalculado en Python (src/clustering_participantes.py); los componentes
@@ -152,6 +154,58 @@ export function totals(rows) {
   let n = 0, part = 0
   for (const r of rows) { n += r.n; part += r.part }
   return { n, part, tasa: n ? (100 * part) / n : 0 }
+}
+
+export function filasActivas(cube, seleccion) {
+  if (!cube?.actividad || !seleccion?.size) return null
+
+  const { rows, codebooks, catDims, numDims, naSentinel, actividad } = cube
+  const anios = new Set(Array.from(seleccion, (idx) => Number(codebooks.anio_mov[idx])))
+  const aniosPorPatron = actividad.anios.map((patron) => new Set(patron.filter((anio) => anios.has(anio))))
+  const inicioPorPerfil = rows.map((row) => Number(codebooks.anio_mov[row.anio_mov]))
+  // El índice 0 corresponde a estudiantes del historial sin perfil analítico.
+  const activos = new Float64Array(rows.length + 1)
+  const inicios = new Float64Array(rows.length + 1)
+  for (const [perfil, patron, n] of actividad.conteos) {
+    const aniosActivos = aniosPorPatron[patron]
+    if (!aniosActivos.size) continue
+    activos[perfil + 1] += n
+    if (aniosActivos.has(inicioPorPerfil[perfil])) inicios[perfil + 1] += n
+  }
+
+  const sinMovilidad = {
+    anio_mov: codebooks.anio_mov.indexOf('N/A'),
+    modalidad: codebooks.modalidad.indexOf('No participa'),
+    resultado: codebooks.resultado.indexOf('No participa'),
+    part: 0,
+  }
+  const sinPerfil = {
+    ...Object.fromEntries(catDims.map((dim) => [dim, codebooks[dim].indexOf('Sin dato')])),
+    ...Object.fromEntries(numDims.map((dim) => [dim, naSentinel])),
+  }
+  const filtradas = []
+  if (activos[0]) filtradas.push({ ...sinPerfil, ...sinMovilidad, n: activos[0] })
+  rows.forEach((row, perfil) => {
+    const inicio = inicios[perfil + 1]
+    const resto = activos[perfil + 1] - inicio
+    if (inicio) filtradas.push({ ...row, n: inicio, part: inicio })
+    if (resto) filtradas.push({ ...row, ...sinMovilidad, n: resto })
+  })
+  return filtradas
+}
+
+export function poblacionPorRango(poblacion, codebook, selected) {
+  if (!poblacion) return null
+  const { desde: primerAnio, hasta: ultimoAnio, rangos } = poblacion
+  const anios = Array.from(selected || [], (idx) => Number(codebook[idx]))
+    .filter(Number.isFinite)
+  const desde = anios.length ? Math.min(...anios) : primerAnio
+  const hasta = anios.length ? Math.max(...anios) : ultimoAnio
+  const total = rangos[desde - primerAnio]?.[hasta - desde]
+  if (total == null) return null
+  const serie = rangos.slice(desde - primerAnio, hasta - primerAnio + 1)
+    .map(([activos], idx) => ({ anio: desde + idx, activos }))
+  return { desde, hasta, total, serie }
 }
 
 // Agrega por una dimensión categórica -> [{ key, label, n, part, tasa }]

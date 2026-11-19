@@ -243,11 +243,12 @@ body {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   gap: 22px;
 }
 
 .card {
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -257,9 +258,71 @@ body {
 .card h3 { margin: 0 0 2px; font-size: 15px; }
 .card .card-sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
 .card.wide { grid-column: 1 / -1; }
+.cluster-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 22px;
+  margin-bottom: 16px;
+}
+.cluster-summary .card { padding: 16px; }
+.cluster-summary .card-sub { margin: 0; line-height: 1.6; }
+.cluster-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 20px;
+  padding: 0;
+  margin: 12px 0 4px;
+  list-style: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+.cluster-legend li { display: flex; align-items: center; gap: 6px; }
+.cluster-legend li span { width: 8px; height: 8px; border-radius: 50%; }
+.boxplot-chart { position: relative; }
+
+.chart-card { position: relative; }
+.chart-copy {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+.chart-card:hover .chart-copy,
+.chart-copy:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.chart-copy:hover { color: var(--accent); }
+.chart-copy-status:not(:empty) {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  right: 48px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 11px;
+}
+@media (hover: none) {
+  .chart-copy { opacity: 1; pointer-events: auto; }
+}
 
 .metric-toggle { display: inline-flex; gap: 4px; margin-left: auto; }
-.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 .card-head h3 { margin: 0; }
 .toggle-btn {
   border: 1px solid var(--line);

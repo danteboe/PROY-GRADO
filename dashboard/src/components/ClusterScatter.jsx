@@ -1,7 +1,8 @@
+import ChartCard from './ChartCard.jsx'
 import { useMemo, useState } from 'react'
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, Legend, Cell,
+  CartesianGrid, Cell,
 } from 'recharts'
 
 // Dispersión 2D de la submuestra de clustering: cada punto es un participante de
@@ -80,7 +81,7 @@ export default function ClusterScatter({ muestra, clusters }) {
   }
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>Mapa de los grupos (dispersión 2D)</h3>
         <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
@@ -106,6 +107,14 @@ export default function ClusterScatter({ muestra, clusters }) {
         microdatos individuales identificables, sino una muestra agregada para visualizar
         cómo se separan los grupos en dos rasgos a la vez.
       </p>
+      <ul className="cluster-legend" aria-label="Grupos">
+        {porGrupo.map(([cid]) => (
+          <li key={cid}>
+            <span aria-hidden="true" style={{ background: CLUSTER_COLORS[cid % CLUSTER_COLORS.length] }} />
+            {nombreGrupo.get(cid) || `Grupo ${cid}`}
+          </li>
+        ))}
+      </ul>
       <ResponsiveContainer width="100%" height={380}>
         <ScatterChart margin={{ left: 14, right: 24, top: 10, bottom: 30 }}>
           <CartesianGrid stroke="#eef2f7" />
@@ -116,7 +125,6 @@ export default function ClusterScatter({ muestra, clusters }) {
                  tick={{ fontSize: 11 }} domain={['auto', 'auto']} width={64}
                  label={{ value: labelDe(ejeY), angle: -90, position: 'insideLeft', fontSize: 11, fill: '#64748b' }} />
           <Tooltip content={<Tip />} cursor={{ strokeDasharray: '3 3' }} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
           {porGrupo.map(([cid, puntos]) => (
             <Scatter key={cid} data={puntos} isAnimationActive={false}
                      name={nombreGrupo.get(cid) || `Grupo ${cid}`}
@@ -128,6 +136,6 @@ export default function ClusterScatter({ muestra, clusters }) {
           ))}
         </ScatterChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

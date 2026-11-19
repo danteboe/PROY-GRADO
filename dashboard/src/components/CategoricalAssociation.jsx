@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -63,7 +64,7 @@ export default function CategoricalAssociation({ data, tasaBase }) {
   const filas = variable.tabla.filter((f) => !SIN_DATO.has(String(f.categoria)))
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>Tasa de participación por categoría</h3>
         {variable.cramers_v != null && (
@@ -125,6 +126,6 @@ export default function CategoricalAssociation({ data, tasaBase }) {
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

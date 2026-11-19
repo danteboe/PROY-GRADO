@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts'
@@ -23,7 +24,7 @@ function Tip({ active, payload, label }) {
 
 export default function SeasonBars({ title, subtitle, data }) {
   return (
-    <div className="card">
+    <ChartCard>
       <h3>{title}</h3>
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={270}>
@@ -37,6 +38,6 @@ export default function SeasonBars({ title, subtitle, data }) {
           <Bar dataKey="Segundo semestre" fill="#d97706" radius={[3, 3, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

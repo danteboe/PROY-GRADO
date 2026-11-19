@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import { useMemo, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
@@ -72,7 +73,7 @@ export default function HistoricalRates({ rates }) {
   const label = labels[dim] || dim
 
   return (
-    <div className="card wide">
+    <ChartCard wide>
       <div className="card-head">
         <h3>Tasa de inicio de movilidad por {String(label).toLowerCase()} y año</h3>
         <label className="metric-toggle" style={{ marginLeft: 'auto' }}>
@@ -109,6 +110,6 @@ export default function HistoricalRates({ rates }) {
         </LineChart>
       </ResponsiveContainer>
       <p className="footnote">flujo de inicio, no prevalencia · asociación, no causa</p>
-    </div>
+    </ChartCard>
   )
 }

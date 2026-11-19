@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, LabelList, ReferenceLine,
@@ -21,7 +22,7 @@ function Tip({ active, payload, label }) {
     <div className="custom-tooltip">
       <div className="tt-title">{d.label}</div>
       <div className="tt-row"><span className="tt-k">Estudiantes</span><span>{fmtInt(d.n)}</span></div>
-      <div className="tt-row"><span className="tt-k">Con internac.</span><span>{fmtInt(d.part)}</span></div>
+      <div className="tt-row"><span className="tt-k">Participantes</span><span>{fmtInt(d.part)}</span></div>
       <div className="tt-row"><span className="tt-k">Tasa</span><span>{fmtPct(d.tasa)}</span></div>
     </div>
   )
@@ -37,7 +38,7 @@ export default function NumericDist({ title, subtitle, data, barColor = '#2563eb
     base = n ? (100 * part) / n : null
   }
   return (
-    <div className="card">
+    <ChartCard>
       <h3>{title}</h3>
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={270}>
@@ -49,12 +50,13 @@ export default function NumericDist({ title, subtitle, data, barColor = '#2563eb
           <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }}
                  tickFormatter={(v) => `${v}%`} />
           <Tooltip content={<Tip />} />
-          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11 }}
+                  formatter={(name) => name === 'Tasa %' && base != null
+                    ? `Tasa % · base ${fmtPct(base, 1)}`
+                    : name} />
           {base != null && (
             <ReferenceLine yAxisId="r" y={base} stroke={BASELINE_COLOR}
-              strokeDasharray="5 4" ifOverflow="extendDomain"
-              label={{ value: `base ${fmtPct(base, 1)}`, position: 'insideBottomRight',
-                       fontSize: 9, fill: BASELINE_COLOR }} />
+              strokeDasharray="5 4" ifOverflow="extendDomain" />
           )}
           <Bar yAxisId="l" dataKey="n" name="Estudiantes" fill={barColor}
                radius={[3, 3, 0, 0]} isAnimationActive={false}>
@@ -65,6 +67,6 @@ export default function NumericDist({ title, subtitle, data, barColor = '#2563eb
                 strokeWidth={2.2} dot={{ r: 2 }} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

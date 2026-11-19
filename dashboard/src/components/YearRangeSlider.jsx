@@ -11,7 +11,7 @@ import { useMemo } from 'react'
 //   selected    : Set<idx> actual del filtro cat.anio_mov.
 //   onChange    : (nextSet) => void  — nuevo Set de índices.
 //   onClear     : () => void         — limpia el filtro.
-export default function YearRangeSlider({ label, codebook, selected, onChange, onClear }) {
+export default function YearRangeSlider({ label, codebook, selected, onChange, onClear, academic }) {
   // Separa índices numéricos (años) de los no numéricos (p. ej. "N/A").
   const { nums, naIdx, minYear, maxYear } = useMemo(() => {
     const nums = []
@@ -76,12 +76,12 @@ export default function YearRangeSlider({ label, codebook, selected, onChange, o
   const onSliderLo = (e) => {
     let v = Number(e.target.value)
     if (v > hasta) v = hasta
-    emit(v, hasta, includeNA)
+    emit(v, hasta, academic ? false : includeNA)
   }
   const onSliderHi = (e) => {
     let v = Number(e.target.value)
     if (v < desde) v = desde
-    emit(desde, v, includeNA)
+    emit(desde, v, academic ? false : includeNA)
   }
 
   // Posición (%) de cada manija para pintar el tramo activo.
@@ -116,19 +116,26 @@ export default function YearRangeSlider({ label, codebook, selected, onChange, o
                onChange={onSliderHi} className="thumb thumb-hi" aria-label="Año hasta" />
       </div>
 
-      <label className="na-toggle">
-        <input type="checkbox" checked={subrangoActivo ? false : includeNA}
-               disabled={subrangoActivo}
-               onChange={(e) => emit(desde, hasta, e.target.checked)} />
-        Incluir sin año/N/A
-      </label>
-
-      {subrangoActivo && (
-        <p className="slider-help">
-          Con un rango de años activo solo se muestran participantes cuyo primer
-          evento de movilidad cae en el rango; se excluyen los no participantes (N/A).
-        </p>
+      {academic ? (
+        <label className="na-toggle">
+          <input type="checkbox" checked={active}
+                 onChange={(e) => e.target.checked ? emit(desde, hasta, false) : onClear()} />
+          Aplicar rango de actividad
+        </label>
+      ) : (
+        <label className="na-toggle">
+          <input type="checkbox" checked={subrangoActivo ? false : includeNA}
+                 disabled={subrangoActivo}
+                 onChange={(e) => emit(desde, hasta, e.target.checked)} />
+          Incluir sin año/N/A
+        </label>
       )}
+
+      <p className="slider-help">
+        {academic
+          ? 'Incluye a quienes tuvieron al menos un registro académico dentro del rango.'
+          : 'Filtra por el año del primer evento de movilidad.'}
+      </p>
     </div>
   )
 }

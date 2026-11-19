@@ -181,6 +181,24 @@ def test_serializable_sin_nan_inf():
     assert "NaN" not in texto and "Infinity" not in texto
 
 
+def test_poblacion_activa_por_intervalo():
+    rendimiento = _rend([
+        ["A", _periodo(2012, "10")],
+        ["A", _periodo(2012, "20")],
+        ["A", _periodo(2014)],
+        ["B", _periodo(2013)],
+        ["C", _periodo(2014)],
+        [None, _periodo(2013)],
+        ["D", None],
+    ])
+    activos = hr.active_student_years(rendimiento)
+    assert hr.compute_active_population(activos, 2012, 2014) == {
+        "desde": 2012,
+        "hasta": 2014,
+        "rangos": [[1, 2, 3], [1, 3], [2]],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Invariante 6: unicidad del activo
 # ---------------------------------------------------------------------------

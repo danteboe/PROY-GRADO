@@ -1,7 +1,8 @@
+import ChartCard from './components/ChartCard.jsx'
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import {
-  loadCube, applyFilters, totals, aggregateBy, aggregateByNumeric,
+  loadCube, applyFilters, totals, filasActivas, poblacionPorRango, aggregateBy, aggregateByNumeric,
   aggregateOportunidad, aggregateHeatmap,
   fmtInt, fmtPct, DIM_LABELS,
 } from './data.js'
@@ -94,11 +95,26 @@ export default function App() {
   }, [])
   const resetAll = useCallback(() => setFilters({ cat: {}, num: {} }), [])
 
+  const aniosSeleccionados = filters.cat.anio_mov
+  const filasDelPeriodo = useMemo(
+    () => filasActivas(cube, aniosSeleccionados),
+    [cube, aniosSeleccionados],
+  )
+  const porActividad = filasDelPeriodo !== null
+  const filtrosPoblacion = useMemo(() => {
+    if (!porActividad) return filters
+    const { anio_mov, ...cat } = filters.cat
+    return { ...filters, cat }
+  }, [filters, porActividad])
+
   if (error) return <div className="empty">Error: {error}. Ejecuta <code>python -m src.export_dashboard</code> y vuelve a abrir.</div>
   if (!cube) return <div className="loading">Cargando datos…</div>
 
   const activeCount =
-    Object.values(filters.cat).reduce((a, s) => a + (s ? s.size : 0), 0) +
+    Object.entries(filters.cat).reduce((a, [dim, set]) => {
+      const count = set?.size || 0
+      return a + (dim === 'anio_mov' ? Math.min(count, 1) : count)
+    }, 0) +
     Object.values(filters.num).filter((r) => r && r.active).length
 
   // En la pestaña Insights NO se muestra el sidebar de filtros: sus gráficas son
@@ -110,18 +126,22 @@ export default function App() {
     <div className={mostrarSidebar ? 'app' : 'app app--sin-sidebar'}>
       {mostrarSidebar && (
         <Sidebar
-          cube={cube} filters={filters}
+          cube={cube} rows={filasDelPeriodo ?? cube.rows} filters={filtrosPoblacion}
+          aniosSeleccionados={aniosSeleccionados} porActividad={porActividad}
           toggleCat={toggleCat} clearCat={clearCat} selectAllCat={selectAllCat}
           setCatSet={setCatSet} setNum={setNum} clearNum={clearNum}
-          resetAll={resetAll} activeCount={activeCount} tab={tab}
+          resetAll={resetAll} activeCount={activeCount}
         />
       )}
-      <Dashboard cube={cube} filters={filters} toggleCat={toggleCat} tab={tab} setTab={setTab} />
+      <Dashboard cube={cube} rows={filasDelPeriodo ?? cube.rows} filters={filtrosPoblacion}
+                 aniosSeleccionados={aniosSeleccionados} porActividad={porActividad}
+                 toggleCat={toggleCat} tab={tab} setTab={setTab} />
     </div>
   )
 }
 
-function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, setNum, clearNum, resetAll, activeCount, tab }) {
+function Sidebar({ cube, rows, filters, aniosSeleccionados, porActividad,
+                   toggleCat, clearCat, selectAllCat, setCatSet, setNum, clearNum, resetAll, activeCount }) {
   // El buscador se muestra si la dimensión supera el umbral de opciones y no está
   // en la lista de exclusión (ver UMBRAL_BUSQUEDA / SIN_BUSQUEDA).
   const esBuscable = (dim) =>
@@ -131,9 +151,9 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
   const countsByDim = useMemo(() => {
     const result = {}
     for (const dim of CAT_FILTER_DIMS) {
-      const rows = applyFilters(cube.rows, filters, dim, cube.naSentinel, cube.numMeta)
+      const seleccion = applyFilters(rows, filters, dim, cube.naSentinel, cube.numMeta)
       const m = new Map()
-      for (const r of rows) {
+      for (const r of seleccion) {
         const c = m.get(r[dim]) || { n: 0, part: 0 }
         c.n += r.n; c.part += r.part
         m.set(r[dim], c)
@@ -141,7 +161,7 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
       result[dim] = m
     }
     return result
-  }, [cube, filters])
+  }, [cube, rows, filters])
 
   return (
     <aside className="sidebar">
@@ -151,8 +171,9 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
         {activeCount === 0 ? 'Sin filtros activos' : `Limpiar ${activeCount} filtro(s)`}
       </button>
       <div className="sidebar-note">
-        El número junto a cada opción indica estudiantes <strong>con</strong> experiencia
-        de internacionalización.
+        El número junto a cada opción indica {porActividad
+          ? 'estudiantes que iniciaron movilidad en el periodo.'
+          : 'estudiantes con experiencia de internacionalización.'}
       </div>
 
       {CAT_FILTER_DIMS.map((dim) => (
@@ -167,14 +188,16 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
           onClear={clearCat}
           onSelectAll={selectAllCat}
           searchable={esBuscable(dim)}
+          porActividad={porActividad}
         />
       ))}
 
-      <div className="sidebar-section">Rango temporal (año de movilidad)</div>
+      <div className="sidebar-section">Rango temporal</div>
       <YearRangeSlider
-        label={DIM_LABELS.anio_mov}
+        label={cube.actividad ? 'Año de actividad académica' : DIM_LABELS.anio_mov}
         codebook={cube.codebooks.anio_mov}
-        selected={filters.cat.anio_mov || new Set()}
+        selected={aniosSeleccionados || new Set()}
+        academic={Boolean(cube.actividad)}
         onChange={(set) => setCatSet('anio_mov', set)}
         onClear={() => clearCat('anio_mov')}
       />
@@ -194,7 +217,7 @@ function Sidebar({ cube, filters, toggleCat, clearCat, selectAllCat, setCatSet, 
   )
 }
 
-function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
+function Dashboard({ cube, rows, filters, aniosSeleccionados, porActividad, toggleCat, tab, setTab }) {
   // Dimensión activa de la tarjeta unificada de composición histórica (CAMBIO 1).
   const [dimComp, setDimComp] = useState('estrato')
   // Navegación por teclado entre pestañas (flechas izquierda/derecha).
@@ -207,11 +230,22 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
     if (el) el.focus()
   }
   const filtered = useMemo(
-    () => applyFilters(cube.rows, filters, null, cube.naSentinel, cube.numMeta),
-    [cube, filters],
+    () => applyFilters(rows, filters, null, cube.naSentinel, cube.numMeta),
+    [cube, rows, filters],
   )
   const t = useMemo(() => totals(filtered), [filtered])
   const base = useMemo(() => totals(cube.rows), [cube])
+  const poblacion = useMemo(
+    () => poblacionPorRango(cube.poblacionActiva, cube.codebooks.anio_mov, aniosSeleccionados),
+    [cube, aniosSeleccionados],
+  )
+  const movilidadPorAnio = Boolean(aniosSeleccionados?.size)
+  const rangoPoblacion = poblacion && (
+    poblacion.desde === poblacion.hasta ? poblacion.desde : `${poblacion.desde}–${poblacion.hasta}`
+  )
+  const grupos = porActividad
+    ? ['Iniciaron movilidad', 'Sin inicio de movilidad']
+    : ['Con internacionalización', 'Sin internacionalización']
 
   const porFacultad = useMemo(() => aggregateBy(filtered, 'facultad', cube.codebooks), [filtered, cube])
   const porPrograma = useMemo(() => aggregateBy(filtered, 'programa', cube.codebooks), [filtered, cube])
@@ -432,14 +466,35 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
           filtrar por ella. Las vistas globales del histórico están en la pestaña
           <strong> Insights</strong>.
         </p>
+        {porActividad && (
+          <p>
+            Cada estudiante con actividad registrada en el rango cuenta una vez. La tasa mide
+            qué proporción inició movilidad en un año en que también registró actividad académica.
+            Los atributos de perfil corresponden al registro consolidado de cada estudiante.
+          </p>
+        )}
       </div>
 
       <div className="kpis">
-        <Kpi value={fmtInt(t.n)} label="Estudiantes (selección)"
-             sub={`${fmtPct(100 * t.n / base.n, 1)} del total`} />
-        <Kpi value={fmtInt(t.part)} label="Con internacionalización" />
-        <Kpi value={fmtPct(t.tasa)} label="Tasa de participación"
-             sub={`Global: ${fmtPct(base.tasa)}`} />
+        {poblacion && !porActividad && (
+          <Kpi value={fmtInt(poblacion.total)} label="Total de estudiantes activos"
+               sub={`${rangoPoblacion} · toda la Universidad`} />
+        )}
+        {porActividad ? (
+          <Kpi value={fmtInt(t.n)} label="Estudiantes activos (selección)"
+               sub={`Periodo ${rangoPoblacion}`} />
+        ) : (!movilidadPorAnio || !poblacion) && (
+          <Kpi value={fmtInt(t.n)} label="Estudiantes (selección)"
+               sub={`${fmtPct(100 * t.n / base.n, 1)} del total`} />
+        )}
+        <Kpi value={fmtInt(t.part)}
+             label={movilidadPorAnio ? 'Primeras movilidades (selección)' : 'Con internacionalización'} />
+        {porActividad ? (
+          <Kpi value={t.n ? fmtPct(t.tasa) : '—'} label="Tasa de inicio en el periodo" />
+        ) : !movilidadPorAnio && (
+          <Kpi value={fmtPct(t.tasa)} label="Tasa de participación"
+               sub={`Global: ${fmtPct(base.tasa)}`} />
+        )}
         <Kpi value={fmtInt(cube.meta.n_eventos)} label="Eventos de movilidad (histórico)" />
       </div>
 
@@ -447,30 +502,45 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
         title="Evolución temporal de la movilidad"
         subtitle="Estudiantes cuyo primer evento de movilidad ocurrió en cada año (según la selección)."
         data={serieTemporal}
+        dataKey="eventos" seriesLabel="Primeras movilidades" pandemic
       />
+      {poblacion && (
+        <TemporalLine
+          title="Estudiantes activos por año"
+          subtitle={`Toda la Universidad. ${fmtInt(poblacion.total)} estudiantes únicos en ${rangoPoblacion}. Cada punto cuenta a quienes registraron actividad académica ese año.`}
+          data={poblacion.serie}
+          dataKey="activos" seriesLabel="Estudiantes activos"
+        />
+      )}
 
       {/* Comparaciones participantes vs no participantes */}
-      <div className="section-title">Participantes vs. no participantes</div>
+      <div className="section-title">{porActividad ? 'Inicio de movilidad en el periodo' : 'Participantes vs. no participantes'}</div>
       <div className="grid">
         <DonutParticipacion
           title="Composición de la selección"
-          subtitle="Qué fracción de los estudiantes filtrados tuvo internacionalización."
+          subtitle={porActividad
+            ? 'Qué fracción de los estudiantes activos de la selección inició movilidad en el periodo.'
+            : 'Qué fracción de los estudiantes filtrados tuvo internacionalización.'}
           totals={t}
+          grupos={grupos}
         />
         <CompareProfile
           title="Perfil por estrato social"
           subtitle="Distribución (%) dentro de cada grupo. ¿De qué estratos provienen?"
           rows={cmpEstrato}
+          grupos={grupos}
         />
         <CompareProfile
           title="Perfil por facultad"
           subtitle="¿Se concentran los dos grupos en facultades distintas?"
           rows={cmpFacultad}
+          grupos={grupos}
         />
         <CompareProfile
           title="Perfil por tipo de admisión"
-          subtitle="Vías de ingreso de participantes vs. no participantes."
+          subtitle="Distribución de las vías de ingreso dentro de cada grupo."
           rows={cmpAdmision}
+          grupos={grupos}
         />
       </div>
 
@@ -481,7 +551,7 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
                      subtitle="Barras: estudiantes. Línea: tasa de participación."
                      data={distPga} barColor="#2563eb" />
         <NumericDist title="Semestre de avance"
-                     subtitle="¿En qué momento de la carrera ocurre la movilidad?"
+                     subtitle="Distribución del semestre de avance registrado."
                      data={distAvance} barColor="#0f766e" />
         <NumericDist title="Puntaje ICFES"
                      subtitle="Relación entre puntaje de ingreso y participación."
@@ -552,9 +622,12 @@ function Dashboard({ cube, filters, toggleCat, tab, setTab }) {
       <div className="section-title">Oportunidad y equidad (según la selección)</div>
       <OpportunityScatter
         title="¿Dónde está el mayor potencial de crecimiento? (por facultad)"
-        subtitle="Según la selección. Volumen de estudiantes vs. tasa de participación; tamaño = estudiantes que aún no participan. Se omiten facultades con menos de 50 estudiantes salvo que la selección total sea pequeña. La línea de media es la tasa de la selección."
+        subtitle={porActividad
+          ? 'Volumen de estudiantes activos vs. tasa de inicio. El tamaño indica cuántos no iniciaron movilidad en el periodo.'
+          : 'Volumen de estudiantes vs. tasa de participación. El tamaño indica cuántos estudiantes aún no participan.'}
         data={oportunidadSel}
         avgRate={t.tasa}
+        sinParticiparLabel={porActividad ? 'Sin inicio en el periodo' : 'No participan'}
       />
       <Heatmap
         title="Brecha socioeconómica dentro de cada facultad"
@@ -775,7 +848,7 @@ function DonutResultado({ resultado }) {
     )
   }
   return (
-    <div className="card">
+    <ChartCard>
       <h3>¿Terminan bien la experiencia?</h3>
       <p className="card-sub">Resultado académico del curso de movilidad.</p>
       <ResponsiveContainer width="100%" height={240}>
@@ -789,6 +862,6 @@ function DonutResultado({ resultado }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="donut-center-note">{fmtPct(pctAprob, 1)} de las experiencias se aprueban</div>
-    </div>
+    </ChartCard>
   )
 }

@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
   LabelList,
@@ -21,10 +22,10 @@ function CompareTip({ active, payload, label }) {
   )
 }
 
-export default function CompareProfile({ title, subtitle, rows }) {
+export default function CompareProfile({ title, subtitle, rows, grupos }) {
   // rows: [{ label, pctPart, pctNo }]  (porcentajes dentro de cada grupo)
   return (
-    <div className="card">
+    <ChartCard>
       <h3>{title}</h3>
       {subtitle && <p className="card-sub">{subtitle}</p>}
       <ResponsiveContainer width="100%" height={Math.max(240, rows.length * 42)}>
@@ -34,16 +35,16 @@ export default function CompareProfile({ title, subtitle, rows }) {
           <YAxis type="category" dataKey="label" width={120} tick={{ fontSize: 11 }} interval={0} />
           <Tooltip content={<CompareTip />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="pctPart" name="Con internac." fill="#9333ea" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+          <Bar dataKey="pctPart" name={grupos[0]} fill="#9333ea" radius={[0, 3, 3, 0]} isAnimationActive={false}>
             <LabelList dataKey="pctPart" position="right" formatter={(v) => fmtPct(v, 0)}
                        style={{ fontSize: 10, fill: '#6b21a8' }} />
           </Bar>
-          <Bar dataKey="pctNo" name="Sin internac." fill="#94a3b8" radius={[0, 3, 3, 0]} isAnimationActive={false}>
+          <Bar dataKey="pctNo" name={grupos[1]} fill="#94a3b8" radius={[0, 3, 3, 0]} isAnimationActive={false}>
             <LabelList dataKey="pctNo" position="right" formatter={(v) => fmtPct(v, 0)}
                        style={{ fontSize: 10, fill: '#475569' }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

@@ -8,6 +8,7 @@ import { fmtInt, orderedCategories } from '../data.js'
 // (tooltip) de cada opción.
 export default function FilterGroup({
   dim, label, codebooks, counts, selected, onToggle, onClear, onSelectAll, searchable = false,
+  porActividad,
 }) {
   const [q, setQ] = useState('')
   const cats = codebooks[dim]
@@ -68,7 +69,7 @@ export default function FilterGroup({
           <label
             className="opt"
             key={it.idx}
-            title={`${it.name}\n${fmtInt(it.part)} con internacionalización de ${fmtInt(it.n)} estudiantes`}
+            title={`${it.name}\n${fmtInt(it.part)} ${porActividad ? 'iniciaron movilidad' : 'con internacionalización'} de ${fmtInt(it.n)} estudiantes`}
           >
             <input
               type="checkbox"
@@ -78,7 +79,7 @@ export default function FilterGroup({
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {it.name}
             </span>
-            <span className="opt-n" title="Estudiantes con internacionalización">
+            <span className="opt-n" title={porActividad ? 'Iniciaron movilidad en el periodo' : 'Estudiantes con internacionalización'}>
               {fmtInt(it.part)}
             </span>
           </label>

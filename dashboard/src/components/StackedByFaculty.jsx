@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts'
@@ -26,7 +27,7 @@ function Tip({ active, payload, label }) {
 
 export default function StackedByFaculty({ title, subtitle, data, modalities, toggle }) {
   return (
-    <div className="card wide">
+    <ChartCard wide>
       {toggle ? (
         <div className="card-head">
           <h3>{title}</h3>
@@ -50,6 +51,6 @@ export default function StackedByFaculty({ title, subtitle, data, modalities, to
           ))}
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }

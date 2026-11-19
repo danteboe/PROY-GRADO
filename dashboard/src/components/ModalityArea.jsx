@@ -1,3 +1,4 @@
+import ChartCard from './ChartCard.jsx'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts'
@@ -29,7 +30,7 @@ function AreaTip({ active, payload, label }) {
 // de lo contrario el apilado muestra huecos.
 export default function ModalityArea({ title, subtitle, data, modalities, toggle }) {
   return (
-    <div className="card wide">
+    <ChartCard wide>
       {toggle ? (
         <div className="card-head">
           <h3>{title}</h3>
@@ -54,6 +55,6 @@ export default function ModalityArea({ title, subtitle, data, modalities, toggle
           ))}
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </ChartCard>
   )
 }
